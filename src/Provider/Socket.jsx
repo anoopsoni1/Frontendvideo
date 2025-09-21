@@ -11,7 +11,7 @@ export const  SocketProvider = (props) => {
     const socket = useMemo(() => 
         io('https://backendvid.onrender.com' ,
            { path: '/socket.io'},
-           { transports: ['websocket'] }
+           { transports: ['websocket',"polling"] }
         ), []
  ) ;
     return (

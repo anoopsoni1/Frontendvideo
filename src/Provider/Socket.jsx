@@ -9,7 +9,9 @@ export const Usesocket = ()=>{
 
 export const  SocketProvider = (props) => {
     const socket = useMemo(() => 
-        io('https://backendvid.onrender.com'), []
+        io('https://backendvid.onrender.com' ,
+           { transports: ['websocket'] }
+        ), []
  ) ;
     return (
         <Socketcontext.Provider value={socket}>

@@ -1,51 +1,67 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Usesocket } from "../Provider/Socket";
-import {useNavigate} from "react-router-dom"
+import { useNavigate } from "react-router-dom";
+
 function App() {
-  const socket  = Usesocket();
-  const [email , setemail ] = useState() ;
-  const [roomid , setroomid] = useState()
+  const socket = Usesocket();
+  const [email, setEmail] = useState("");
+  const [roomId, setRoomId] = useState("");
+
+  const navigate = useNavigate();
 
 
-  const navi = useNavigate()
+  const handleJoinRoom = useCallback(() => {
+    if (!email || !roomId) {
+      alert("Please enter both Email and Room ID");
+      return;
+    }
+    socket.emit("join-room", { emailid: email, roomid: roomId });
+  }, [email, roomId, socket]);
 
-const handlejoinroom = ()=>{
-  socket.emit("join-room" ,{emailid : email , roomid})
-}
-
-const handleroomjoined = (roomid)=>{
-  console.log("Room-joined" , roomid);
-     navi(`/room/${roomid}`)
-}
+  const handleRoomJoined = useCallback(
+    (roomid) => {
+      console.log("Room joined:", roomid);
+      navigate(`/room/${roomid}`);
+    },
+    [navigate]
+  );
 
   useEffect(() => {
-  socket.on("joined-room" ,handleroomjoined )
+    socket.on("joined-room", handleRoomJoined);
+    return () => socket.off("joined-room", handleRoomJoined);
+  }, [socket, handleRoomJoined]);
 
-  return ()=>{
-    socket.off('joined-room', handleroomjoined)
-  }
-  }, [socket]); 
+
   return (
-    <div className="grid place-items-center pt-10 gap-8">
-      <input
-        type="email"
-        className="outline-2 outline-amber-300 rounded-[8px]"
-        placeholder="Enter your email"
-        value={email}
-        onChange={(e)=> setemail(e.target.value)
-        }
-      />
-      <input
-        type="text"
-        className="outline-2 outline-amber-300 rounded-[8px]"
-        placeholder="Enter Room id"
-        value={roomid}
-        onChange={(e)=> setroomid(e.target.value)}
-      />
-      <button onClick={handlejoinroom}   >Enter Room</button>
+    <div className="flex flex-col items-center justify-center min-h-screen gap-6 bg-gray-50">
+      <h1 className="text-3xl font-bold text-gray-800">Join a Room</h1>
+
+      <div className="flex flex-col gap-4 w-80">
+        <input
+          type="email"
+          placeholder="Enter your email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none"
+        />
+
+        <input
+          type="text"
+          placeholder="Enter Room ID"
+          value={roomId}
+          onChange={(e) => setRoomId(e.target.value)}
+          className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none"
+        />
+
+        <button
+          onClick={handleJoinRoom}
+          className="bg-amber-500 hover:bg-amber-600 text-white font-medium py-2 rounded-lg shadow-md transition-all duration-200"
+        >
+          Enter Room
+        </button>
+      </div>
     </div>
   );
 }
 
 export default App;
-

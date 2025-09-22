@@ -15,10 +15,12 @@ function Page2() {
   } = Usepeer();
 
   const [streamed, setStreamed] = useState(null);
-  const [remoteEmail, setRemoteEmail] = useState(null);
+  const [remoteUsers, setRemoteUsers] = useState([]); // ✅ store multiple remote users
+  const [cameraOn, setCameraOn] = useState(true);
+  const [micOn, setMicOn] = useState(true);
 
   const localVideoRef = useRef(null);
-  const remoteVideoRef = useRef(null);
+  const remoteVideosContainerRef = useRef(null); // container to append remote videos
 
   // Get local media
   const getUserMedia = async () => {
@@ -34,30 +36,38 @@ function Page2() {
   // Handle new user joining
   const handleNewUserJoined = useCallback(({ emailid }) => {
     console.log("New user joined:", emailid);
-    setRemoteEmail(emailid);
+    setRemoteUsers((prev) => [...new Set([...prev, emailid])]);
   }, []);
 
   // Handle incoming call
-  const handleIncomingCall = useCallback(async ({ from, offer }) => {
-    console.log("Incoming call from:", from);
-    const answer = await createAnswer(offer);
-    socket.emit("Call-accepted", { emailid: from, answer });
-    setRemoteEmail(from);
-    if (streamed) sendStream(streamed);
-  }, [createAnswer, socket, streamed, sendStream]);
+  const handleIncomingCall = useCallback(
+    async ({ from, offer }) => {
+      console.log("Incoming call from:", from);
+      const answer = await createAnswer(offer);
+      socket.emit("Call-accepted", { emailid: from, answer });
+      setRemoteUsers((prev) => [...new Set([...prev, from])]);
+      if (streamed) sendStream(streamed);
+    },
+    [createAnswer, socket, streamed, sendStream]
+  );
 
   // Handle call accepted
-  const handleCallAccepted = useCallback(async ({ answer }) => {
-    console.log("Call accepted by remote user");
-    await setRemoteDescription(answer);
-    if (streamed) sendStream(streamed);
-  }, [setRemoteDescription, streamed, sendStream]);
+  const handleCallAccepted = useCallback(
+    async ({ answer }) => {
+      console.log("Call accepted by remote user");
+      await setRemoteDescription(answer);
+      if (streamed) sendStream(streamed);
+    },
+    [setRemoteDescription, streamed, sendStream]
+  );
 
   // ICE candidate handling
   useEffect(() => {
     peer.addEventListener("icecandidate", (event) => {
-      if (event.candidate && remoteEmail) {
-        socket.emit("ice-candidate", { to: remoteEmail, candidate: event.candidate });
+      if (event.candidate) {
+        remoteUsers.forEach((remoteEmail) => {
+          socket.emit("ice-candidate", { to: remoteEmail, candidate: event.candidate });
+        });
       }
     });
 
@@ -72,12 +82,20 @@ function Page2() {
     return () => {
       socket.off("ice-candidate");
     };
-  }, [peer, remoteEmail, socket, addIceCandidate]);
+  }, [peer, remoteUsers, socket, addIceCandidate]);
 
-  // Set remote stream
+  // Set remote stream dynamically
   useEffect(() => {
-    if (remoteVideoRef.current && remotestream) {
-      remoteVideoRef.current.srcObject = remotestream;
+    if (remotestream) {
+      const videoElement = document.createElement("video");
+      videoElement.srcObject = remotestream;
+      videoElement.autoplay = true;
+      videoElement.playsInline = true;
+      videoElement.style.width = "300px";
+      videoElement.style.borderRadius = "10px";
+      videoElement.style.background = "#000";
+
+      remoteVideosContainerRef.current.appendChild(videoElement);
     }
   }, [remotestream]);
 
@@ -95,30 +113,66 @@ function Page2() {
   }, [socket, handleNewUserJoined, handleIncomingCall, handleCallAccepted]);
 
   // Get local media on mount
-  useEffect(() => { getUserMedia(); }, []);
+  useEffect(() => {
+    getUserMedia();
+  }, []);
 
   // Button click: create offer and connect to remote
   const handleCallButton = async () => {
-    if (!remoteEmail || !streamed) return alert("No remote user or local stream available");
+    if (!remoteUsers.length || !streamed) return alert("No remote users or local stream available");
     const offer = await createOffer();
     sendStream(streamed);
-    socket.emit("call-user", { emailid: remoteEmail, offer });
+    remoteUsers.forEach((remoteEmail) => {
+      socket.emit("call-user", { emailid: remoteEmail, offer });
+    });
+  };
+
+  // Toggle Camera
+  const toggleCamera = () => {
+    if (!streamed) return;
+    streamed.getVideoTracks().forEach((track) => (track.enabled = !cameraOn));
+    setCameraOn((prev) => !prev);
+  };
+
+  // Toggle Mic
+  const toggleMic = () => {
+    if (!streamed) return;
+    streamed.getAudioTracks().forEach((track) => (track.enabled = !micOn));
+    setMicOn((prev) => !prev);
+  };
+
+  // End Call
+  const handleEndCall = () => {
+    if (streamed) {
+      streamed.getTracks().forEach((track) => track.stop());
+    }
+    if (localVideoRef.current) localVideoRef.current.srcObject = null;
+    if (remoteVideosContainerRef.current) remoteVideosContainerRef.current.innerHTML = "";
+    setRemoteUsers([]);
+    console.log("Call ended");
   };
 
   return (
     <div style={{ padding: "20px" }}>
       <h1>Welcome</h1>
-      <h2>{remoteEmail ? `Remote: ${remoteEmail}` : "Waiting for user..."}</h2>
+      <h2>{remoteUsers.length > 0 ? `Connected to: ${remoteUsers.join(", ")}` : "Waiting for users..."}</h2>
       <div style={{ display: "flex", gap: "20px" }}>
-        <video ref={localVideoRef} autoPlay muted playsInline style={{ width: "600px", borderRadius: "10px", background: "#000" }} />
-        <video ref={remoteVideoRef} autoPlay playsInline style={{ width: "600px", borderRadius: "10px", background: "#000" }} />
+        <video
+          ref={localVideoRef}
+          autoPlay
+          muted
+          playsInline
+          style={{ width: "300px", borderRadius: "10px", background: "#000" }}
+        />
+        <div ref={remoteVideosContainerRef} style={{ display: "flex", gap: "10px", flexWrap: "wrap" }} />
       </div>
-      <button
-        onClick={handleCallButton}
-        style={{ marginTop: "20px", padding: "10px 20px", borderRadius: "8px", backgroundColor: "#007bff", color: "#fff", border: "none", cursor: "pointer" }}
-      >
-        Connect Video
-      </button>
+
+      <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
+        <button onClick={handleCallButton}>Connect Video</button>
+        <button onClick={toggleCamera}>{cameraOn ? "Turn Camera Off" : "Turn Camera On"}</button>
+        <button onClick={toggleMic}>{micOn ? "Mute Mic" : "Unmute Mic"}</button>
+        <button onClick={handleEndCall} style={{ backgroundColor: "red", color: "white" }}>End Call</button>
+      </div>
     </div>
   );
 }

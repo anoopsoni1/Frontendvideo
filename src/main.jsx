@@ -4,7 +4,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom"
 import App from './Pages/App'
 import Page2 from './Pages/Page2'
 import SocketProvider from "./Provider/Socket.jsx"
-import Peerprovider from './Provider/Peer.jsx'
+import PeerProvider from './Provider/Peer.jsx'
 
 const router = createBrowserRouter([
   {
@@ -19,8 +19,8 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')).render(
     <SocketProvider>
-      <Peerprovider>
+      <PeerProvider>
     <RouterProvider router={router} />
-    </Peerprovider>
+    </PeerProvider>
     </SocketProvider>
 )

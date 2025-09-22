@@ -132,7 +132,7 @@ function Page2() {
   };
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen flex flex-col items-center">
+    <div className="p-6 bg-slate-950 min-h-screen flex flex-col items-center">
       <h1 className="text-3xl font-bold mb-2">Video Call Room</h1>
       <h2 className="text-lg mb-4">
         {remoteUsers.length > 0 ? `Connected to: ${remoteUsers.join(", ")}` : "Waiting for users..."}

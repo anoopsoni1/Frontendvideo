@@ -5,111 +5,100 @@ import { Usepeer } from "../Provider/Peer";
 function Page2() {
   const socket = Usesocket();
   const {
-    peer,
+    createPeer,
     createOffer,
     createAnswer,
     setRemoteDescription,
     sendStream,
-    remotestream,
     addIceCandidate,
+    onIceCandidate,
+    closeAllPeers,
+    remoteStreams,
   } = Usepeer();
 
   const [streamed, setStreamed] = useState(null);
-  const [remoteUsers, setRemoteUsers] = useState([]);
+  const [remoteUsers, setRemoteUsers] = useState([]); // email list
   const [cameraOn, setCameraOn] = useState(true);
   const [micOn, setMicOn] = useState(true);
 
   const localVideoRef = useRef(null);
-  const remoteVideosContainerRef = useRef(null);
 
+  // ✅ Get user media
   const getUserMedia = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setStreamed(stream);
+      sendStream(stream); // send to all existing peers
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
     } catch (err) {
       console.error("Failed to get user media:", err);
     }
   };
 
+  // ✅ New user joins → create a peer for them
   const handleNewUserJoined = useCallback(({ emailid }) => {
     setRemoteUsers((prev) => [...new Set([...prev, emailid])]);
-  }, []);
+    createPeer(emailid);
 
+    // Listen for ICE candidates for this peer
+    onIceCandidate(emailid, (candidate) => {
+      socket.emit("ice-candidate", { to: emailid, candidate });
+    });
+  }, [createPeer, onIceCandidate, socket]);
+
+  // ✅ Incoming call → set remote offer, send answer
   const handleIncomingCall = useCallback(
     async ({ from, offer }) => {
-      const answer = await createAnswer(offer);
+      createPeer(from);
+      const answer = await createAnswer(from, offer);
       socket.emit("Call-accepted", { emailid: from, answer });
-      setRemoteUsers((prev) => [...new Set([...prev, from])]);
-      if (streamed) sendStream(streamed);
     },
-    [createAnswer, socket, streamed, sendStream]
+    [createPeer, createAnswer, socket]
   );
 
+  // ✅ Call accepted → set remote answer
   const handleCallAccepted = useCallback(
-    async ({ answer }) => {
-      await setRemoteDescription(answer);
-      if (streamed) sendStream(streamed);
+    async ({ from, answer }) => {
+      await setRemoteDescription(from, answer);
     },
-    [setRemoteDescription, streamed, sendStream]
+    [setRemoteDescription]
   );
 
-  useEffect(() => {
-    peer.addEventListener("icecandidate", (event) => {
-      if (event.candidate) {
-        remoteUsers.forEach((remoteEmail) => {
-          socket.emit("ice-candidate", { to: remoteEmail, candidate: event.candidate });
-        });
-      }
-    });
+  // ✅ ICE candidate received from remote peer
+  const handleIceCandidate = useCallback(
+    async ({ from, candidate }) => {
+      await addIceCandidate(from, candidate);
+    },
+    [addIceCandidate]
+  );
 
-    socket.on("ice-candidate", async ({ candidate }) => {
-      try {
-        await addIceCandidate(candidate);
-      } catch (err) {
-        console.error("Failed to add ICE candidate:", err);
-      }
-    });
-
-    return () => {
-      socket.off("ice-candidate");
-    };
-  }, [peer, remoteUsers, socket, addIceCandidate]);
-
-  useEffect(() => {
-    if (remotestream) {
-      const videoElement = document.createElement("video");
-      videoElement.srcObject = remotestream;
-      videoElement.autoplay = true;
-      videoElement.playsInline = true;
-      videoElement.className = "w-64 h-48 rounded-lg shadow-lg bg-black object-cover";
-      remoteVideosContainerRef.current.appendChild(videoElement);
-    }
-  }, [remotestream]);
-
+  // ✅ Socket event listeners
   useEffect(() => {
     socket.on("user-joined", handleNewUserJoined);
     socket.on("incoming-call", handleIncomingCall);
     socket.on("Call-accepted", handleCallAccepted);
+    socket.on("ice-candidate", handleIceCandidate);
 
     return () => {
       socket.off("user-joined", handleNewUserJoined);
       socket.off("incoming-call", handleIncomingCall);
       socket.off("Call-accepted", handleCallAccepted);
+      socket.off("ice-candidate", handleIceCandidate);
     };
-  }, [socket, handleNewUserJoined, handleIncomingCall, handleCallAccepted]);
+  }, [socket, handleNewUserJoined, handleIncomingCall, handleCallAccepted, handleIceCandidate]);
 
+  // ✅ Get local media on mount
   useEffect(() => {
     getUserMedia();
   }, []);
 
+  // ✅ Call all connected users
   const handleCallButton = async () => {
-    if (!remoteUsers.length || !streamed) return alert("No remote users or local stream available");
-    const offer = await createOffer();
-    sendStream(streamed);
-    remoteUsers.forEach((remoteEmail) => {
-      socket.emit("call-user", { emailid: remoteEmail, offer });
-    });
+    if (!streamed) return alert("No local stream available");
+    for (const emailid of remoteUsers) {
+      const offer = await createOffer(emailid);
+      socket.emit("call-user", { emailid, offer });
+    }
   };
 
   const toggleCamera = () => {
@@ -125,19 +114,22 @@ function Page2() {
   };
 
   const handleEndCall = () => {
-    if (streamed) streamed.getTracks().forEach((track) => track.stop());
-    if (localVideoRef.current) localVideoRef.current.srcObject = null;
-    if (remoteVideosContainerRef.current) remoteVideosContainerRef.current.innerHTML = "";
+    streamed?.getTracks().forEach((track) => track.stop());
+    closeAllPeers();
     setRemoteUsers([]);
+    if (localVideoRef.current) localVideoRef.current.srcObject = null;
   };
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen flex flex-col items-center">
       <h1 className="text-3xl font-bold mb-2">Video Call Room</h1>
       <h2 className="text-lg mb-4">
-        {remoteUsers.length > 0 ? `Connected to: ${remoteUsers.join(", ")}` : "Waiting for users..."}
+        {remoteUsers.length > 0
+          ? `Connected to: ${remoteUsers.join(", ")}`
+          : "Waiting for users..."}
       </h2>
 
+      {/* Video Grid */}
       <div className="flex flex-wrap gap-4 justify-center mb-6">
         <video
           ref={localVideoRef}
@@ -146,9 +138,18 @@ function Page2() {
           playsInline
           className="w-64 h-48 rounded-lg shadow-lg bg-black object-cover"
         />
-        <div ref={remoteVideosContainerRef} className="flex flex-wrap gap-4" />
+        {remoteStreams.map(({ email, stream }) => (
+          <video
+            key={email}
+            autoPlay
+            playsInline
+            className="w-64 h-48 rounded-lg shadow-lg bg-black object-cover"
+            ref={(el) => el && (el.srcObject = stream)}
+          />
+        ))}
       </div>
 
+      {/* Control Buttons */}
       <div className="flex flex-wrap gap-4 justify-center">
         <button
           onClick={handleCallButton}

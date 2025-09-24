@@ -1,125 +1,100 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from "react";
+import React, { createContext, useContext, useMemo, useState, useCallback, useEffect } from "react";
 
 const PeerContext = createContext(null);
 
 export const Usepeer = () => useContext(PeerContext);
 
 const PeerProvider = ({ children }) => {
-  const peersRef = useRef(new Map()); // email -> RTCPeerConnection
-  const [remoteStreams, setRemoteStreams] = useState([]); // [{ email, stream }]
+  const [remotestream, setRemotestream] = useState(null);
   const [localStream, setLocalStream] = useState(null);
 
-  // ✅ Create a new RTCPeerConnection for a specific user
-  const createPeer = useCallback((email) => {
-    if (peersRef.current.has(email)) return peersRef.current.get(email);
+  const peer = useMemo(() => new RTCPeerConnection({
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      {
+        urls: "turn:turn.myserver.com:3478?transport=tcp",
+        username: "user",
+        credential: "pass"
+      }
+    ]
+  }), []);
 
-    const peer = new RTCPeerConnection({
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        {
-          urls: "turn:turn.myserver.com:3478?transport=tcp",
-          username: "user",
-          credential: "pass",
-        },
-      ],
-    });
-
-    // Add local tracks if already available
-    if (localStream) {
-      localStream.getTracks().forEach((track) => peer.addTrack(track, localStream));
+  // Handle remote track
+  const handleTrackEvent = useCallback((event) => {
+    if (event.streams && event.streams[0]) {
+      setRemotestream(event.streams[0]);
     }
+  }, []);
 
-    // When remote track is received
-    peer.ontrack = (event) => {
-      const stream = event.streams[0];
-      setRemoteStreams((prev) => {
-        // avoid duplicate streams for same user
-        const exists = prev.find((r) => r.email === email);
-        if (exists) return prev;
-        return [...prev, { email, stream }];
-      });
+  useEffect(() => {
+    peer.addEventListener("track", handleTrackEvent);
+    return () => {
+      peer.removeEventListener("track", handleTrackEvent);
     };
+  }, [peer, handleTrackEvent]);
 
-    peersRef.current.set(email, peer);
-    return peer;
-  }, [localStream]);
-
-  // ✅ Add local stream to all peers
+  // Send local stream to peer
   const sendStream = useCallback((stream) => {
     if (!stream) return;
     setLocalStream(stream);
-    peersRef.current.forEach((peer) => {
-      stream.getTracks().forEach((track) => {
-        const sender = peer.getSenders().find((s) => s.track && s.track.kind === track.kind);
-        if (!sender) peer.addTrack(track, stream);
-      });
+    stream.getTracks().forEach((track) => {
+      // Check if track already exists to prevent duplicate sender errors
+      const sender = peer.getSenders().find((s) => s.track && s.track.kind === track.kind);
+      if (!sender) {
+        peer.addTrack(track, stream);
+      }
     });
-  }, []);
+  }, [peer]);
 
-  // ✅ Create offer for a specific peer
-  const createOffer = useCallback(async (email) => {
-    const peer = createPeer(email);
+  // Create offer
+  const createOffer = useCallback(async () => {
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
     return offer;
-  }, [createPeer]);
+  }, [peer]);
 
-  // ✅ Create answer for a specific peer
-  const createAnswer = useCallback(async (email, offer) => {
-    const peer = createPeer(email);
+  // Create answer
+  const createAnswer = useCallback(async (offer) => {
     await peer.setRemoteDescription(offer);
     const answer = await peer.createAnswer();
     await peer.setLocalDescription(answer);
     return answer;
-  }, [createPeer]);
+  }, [peer]);
 
-  // ✅ Set remote description (when answer is received)
-  const setRemoteDescription = useCallback(async (email, answer) => {
-    const peer = createPeer(email);
+  // Set remote description (for answers)
+  const setRemoteDescription = useCallback(async (answer) => {
     await peer.setRemoteDescription(answer);
-  }, [createPeer]);
+  }, [peer]);
 
-  // ✅ Add ICE candidate for a specific peer
-  const addIceCandidate = useCallback(async (email, candidate) => {
+  // Handle ICE candidates
+  const addIceCandidate = useCallback(async (candidate) => {
     if (!candidate) return;
-    const peer = createPeer(email);
     try {
       await peer.addIceCandidate(candidate);
     } catch (err) {
       console.error("Failed to add ICE candidate:", err);
     }
-  }, [createPeer]);
+  }, [peer]);
 
-  // ✅ Listen for ICE candidates for a specific peer
-  const onIceCandidate = useCallback((email, callback) => {
-    const peer = createPeer(email);
-    peer.onicecandidate = (event) => {
+
+  const onIceCandidate = useCallback((callback) => {
+    peer.addEventListener("icecandidate", (event) => {
       if (event.candidate) callback(event.candidate);
-    };
-  }, [createPeer]);
-
-  // ✅ Cleanup all peers
-  const closeAllPeers = useCallback(() => {
-    peersRef.current.forEach((peer) => peer.close());
-    peersRef.current.clear();
-    setRemoteStreams([]);
-  }, []);
+    });
+  }, [peer]);
 
   return (
-    <PeerContext.Provider
-      value={{
-        createPeer,
-        createOffer,
-        createAnswer,
-        setRemoteDescription,
-        addIceCandidate,
-        onIceCandidate,
-        sendStream,
-        closeAllPeers,
-        remoteStreams,
-        localStream,
-      }}
-    >
+    <PeerContext.Provider value={{
+      peer,
+      sendStream,
+      createOffer,
+      createAnswer,
+      setRemoteDescription,
+      remotestream,
+      addIceCandidate,
+      onIceCandidate,
+      localStream
+    }}>
       {children}
     </PeerContext.Provider>
   );

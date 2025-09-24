@@ -4,20 +4,10 @@ import { Usepeer } from "../Provider/Peer";
 
 function Page2() {
   const socket = Usesocket();
-  const {
-    createPeer,
-    createOffer,
-    createAnswer,
-    setRemoteDescription,
-    sendStream,
-    addIceCandidate,
-    onIceCandidate,
-    closeAllPeers,
-    remoteStreams,
-  } = Usepeer();
+  const { createOffer, createAnswer, setRemoteDescription, sendStream, addIceCandidate } = Usepeer();
 
   const [streamed, setStreamed] = useState(null);
-  const [remoteUsers, setRemoteUsers] = useState([]); // email list
+  const [remoteStreams, setRemoteStreams] = useState({}); // {socketId: MediaStream}
   const [cameraOn, setCameraOn] = useState(true);
   const [micOn, setMicOn] = useState(true);
 
@@ -28,109 +18,156 @@ function Page2() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setStreamed(stream);
-      sendStream(stream); // send to all existing peers
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
     } catch (err) {
       console.error("Failed to get user media:", err);
     }
   };
 
-  // ✅ New user joins → create a peer for them
-  const handleNewUserJoined = useCallback(({ emailid }) => {
-    setRemoteUsers((prev) => [...new Set([...prev, emailid])]);
-    createPeer(emailid);
+  // ✅ Helper: Add remote stream to state
+  const addRemoteStream = useCallback((socketId, stream) => {
+    setRemoteStreams((prev) => ({ ...prev, [socketId]: stream }));
+  }, []);
 
-    // Listen for ICE candidates for this peer
-    onIceCandidate(emailid, (candidate) => {
-      socket.emit("ice-candidate", { to: emailid, candidate });
+  // ✅ Helper: Remove remote stream when user leaves
+  const removeRemoteStream = useCallback((socketId) => {
+    setRemoteStreams((prev) => {
+      const newStreams = { ...prev };
+      delete newStreams[socketId];
+      return newStreams;
     });
-  }, [createPeer, onIceCandidate, socket]);
+  }, []);
 
-  // ✅ Incoming call → set remote offer, send answer
-  const handleIncomingCall = useCallback(
+  // ✅ Handle Offer (incoming)
+  const handleReceiveOffer = useCallback(
     async ({ from, offer }) => {
-      createPeer(from);
-      const answer = await createAnswer(from, offer);
-      socket.emit("Call-accepted", { emailid: from, answer });
+      console.log("📥 Received Offer from", from);
+      const answer = await createAnswer(offer, (track) => {
+        const remoteStream = new MediaStream();
+        remoteStream.addTrack(track);
+        addRemoteStream(from, remoteStream);
+      });
+      socket.emit("send-answer", { to: from, answer });
+      if (streamed) sendStream(streamed);
     },
-    [createPeer, createAnswer, socket]
+    [createAnswer, socket, streamed, sendStream, addRemoteStream]
   );
 
-  // ✅ Call accepted → set remote answer
-  const handleCallAccepted = useCallback(
+  // ✅ Handle Answer
+  const handleReceiveAnswer = useCallback(
     async ({ from, answer }) => {
-      await setRemoteDescription(from, answer);
+      console.log("📥 Received Answer from", from);
+      await setRemoteDescription(answer);
+      if (streamed) sendStream(streamed);
     },
-    [setRemoteDescription]
+    [setRemoteDescription, streamed, sendStream]
   );
 
-  // ✅ ICE candidate received from remote peer
-  const handleIceCandidate = useCallback(
+  // ✅ Handle ICE Candidate
+  const handleReceiveIceCandidate = useCallback(
     async ({ from, candidate }) => {
-      await addIceCandidate(from, candidate);
+      console.log("📥 Received ICE candidate from", from);
+      try {
+        await addIceCandidate(candidate);
+      } catch (err) {
+        console.error("Failed to add ICE candidate:", err);
+      }
     },
     [addIceCandidate]
   );
 
-  // ✅ Socket event listeners
+  // ✅ Handle new user joined -> create offer for them
+  const handleUserJoined = useCallback(
+    async ({ socketId }) => {
+      console.log("👤 New user joined:", socketId);
+      const offer = await createOffer((track) => {
+        const remoteStream = new MediaStream();
+        remoteStream.addTrack(track);
+        addRemoteStream(socketId, remoteStream);
+      });
+      socket.emit("send-offer", { to: socketId, offer });
+    },
+    [createOffer, socket, addRemoteStream]
+  );
+
+  // ✅ Handle all existing users when you join
+  const handleAllUsers = useCallback(
+    async (existingUsers) => {
+      console.log("👥 Existing users in room:", existingUsers);
+      for (const userId of existingUsers) {
+        const offer = await createOffer((track) => {
+          const remoteStream = new MediaStream();
+          remoteStream.addTrack(track);
+          addRemoteStream(userId, remoteStream);
+        });
+        socket.emit("send-offer", { to: userId, offer });
+      }
+    },
+    [createOffer, socket, addRemoteStream]
+  );
+
+  // ✅ Handle user leaving -> remove their video
+  const handleUserLeft = useCallback(
+    ({ socketId }) => {
+      console.log("❌ User left:", socketId);
+      removeRemoteStream(socketId);
+    },
+    [removeRemoteStream]
+  );
+
+  // ✅ Setup socket listeners
   useEffect(() => {
-    socket.on("user-joined", handleNewUserJoined);
-    socket.on("incoming-call", handleIncomingCall);
-    socket.on("Call-accepted", handleCallAccepted);
-    socket.on("ice-candidate", handleIceCandidate);
+    socket.on("receive-offer", handleReceiveOffer);
+    socket.on("receive-answer", handleReceiveAnswer);
+    socket.on("receive-ice-candidate", handleReceiveIceCandidate);
+    socket.on("user-joined", handleUserJoined);
+    socket.on("all-users", handleAllUsers);
+    socket.on("user-left", handleUserLeft);
 
     return () => {
-      socket.off("user-joined", handleNewUserJoined);
-      socket.off("incoming-call", handleIncomingCall);
-      socket.off("Call-accepted", handleCallAccepted);
-      socket.off("ice-candidate", handleIceCandidate);
+      socket.off("receive-offer", handleReceiveOffer);
+      socket.off("receive-answer", handleReceiveAnswer);
+      socket.off("receive-ice-candidate", handleReceiveIceCandidate);
+      socket.off("user-joined", handleUserJoined);
+      socket.off("all-users", handleAllUsers);
+      socket.off("user-left", handleUserLeft);
     };
-  }, [socket, handleNewUserJoined, handleIncomingCall, handleCallAccepted, handleIceCandidate]);
+  }, [socket, handleReceiveOffer, handleReceiveAnswer, handleReceiveIceCandidate, handleUserJoined, handleAllUsers, handleUserLeft]);
 
-  // ✅ Get local media on mount
   useEffect(() => {
     getUserMedia();
   }, []);
 
-  // ✅ Call all connected users
-  const handleCallButton = async () => {
-    if (!streamed) return alert("No local stream available");
-    for (const emailid of remoteUsers) {
-      const offer = await createOffer(emailid);
-      socket.emit("call-user", { emailid, offer });
-    }
-  };
-
+  // ✅ Toggle camera
   const toggleCamera = () => {
     if (!streamed) return;
     streamed.getVideoTracks().forEach((track) => (track.enabled = !cameraOn));
     setCameraOn((prev) => !prev);
   };
 
+  // ✅ Toggle mic
   const toggleMic = () => {
     if (!streamed) return;
     streamed.getAudioTracks().forEach((track) => (track.enabled = !micOn));
     setMicOn((prev) => !prev);
   };
 
+  // ✅ End call
   const handleEndCall = () => {
-    streamed?.getTracks().forEach((track) => track.stop());
-    closeAllPeers();
-    setRemoteUsers([]);
+    if (streamed) streamed.getTracks().forEach((track) => track.stop());
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
+    setRemoteStreams({});
   };
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen flex flex-col items-center">
       <h1 className="text-3xl font-bold mb-2">Video Call Room</h1>
       <h2 className="text-lg mb-4">
-        {remoteUsers.length > 0
-          ? `Connected to: ${remoteUsers.join(", ")}`
-          : "Waiting for users..."}
+        {Object.keys(remoteStreams).length > 0 ? `Connected with ${Object.keys(remoteStreams).length} users` : "Waiting for users..."}
       </h2>
 
-      {/* Video Grid */}
       <div className="flex flex-wrap gap-4 justify-center mb-6">
+        {/* Local Video */}
         <video
           ref={localVideoRef}
           autoPlay
@@ -138,25 +175,21 @@ function Page2() {
           playsInline
           className="w-64 h-48 rounded-lg shadow-lg bg-black object-cover"
         />
-        {remoteStreams.map(({ email, stream }) => (
+        {/* Remote Videos */}
+        {Object.entries(remoteStreams).map(([id, stream]) => (
           <video
-            key={email}
+            key={id}
             autoPlay
             playsInline
             className="w-64 h-48 rounded-lg shadow-lg bg-black object-cover"
-            ref={(el) => el && (el.srcObject = stream)}
+            ref={(el) => {
+              if (el) el.srcObject = stream;
+            }}
           />
         ))}
       </div>
 
-      {/* Control Buttons */}
       <div className="flex flex-wrap gap-4 justify-center">
-        <button
-          onClick={handleCallButton}
-          className="px-4 py-2 bg-blue-600 text-black rounded-lg shadow hover:bg-blue-700 transition"
-        >
-          Connect Video
-        </button>
         <button
           onClick={toggleCamera}
           className="px-4 py-2 bg-yellow-500 text-black rounded-lg shadow hover:bg-yellow-600 transition"

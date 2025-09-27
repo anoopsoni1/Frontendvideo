@@ -22,7 +22,7 @@ function Home() {
     socket.on("joined-room", (roomid) => {
       console.log("✅ Joined room:", roomid);
       // Navigate to group video call page
-      navigate(`/room/${roomid}`, { state: { email, roomid } });
+      navigate(`/mainpage`, { state: { email, roomid } });
     });
 
     return () => {

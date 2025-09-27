@@ -1,3 +1,4 @@
+// ... your existing imports
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Usesocket } from "../Provider/Socket";
 import { Usepeer } from "../Provider/Peer";
@@ -18,18 +19,65 @@ function Page2() {
   const [remoteUsers, setRemoteUsers] = useState([]);
   const [cameraOn, setCameraOn] = useState(true);
   const [micOn, setMicOn] = useState(true);
+  const [screenSharing, setScreenSharing] = useState(false);
+  const [webcamStream, setWebcamStream] = useState(null);
 
   const localVideoRef = useRef(null);
   const remoteVideosContainerRef = useRef(null);
 
+  // Get webcam stream
   const getUserMedia = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setStreamed(stream);
+      setWebcamStream(stream);
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
     } catch (err) {
       console.error("Failed to get user media:", err);
     }
+  };
+
+  // Screen sharing function
+  const handleScreenShare = async () => {
+    if (!peer) return;
+
+    if (!screenSharing) {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        const screenTrack = screenStream.getVideoTracks()[0];
+
+        // Replace the video track in peer connection
+        const sender = peer.getSenders().find(s => s.track.kind === "video");
+        if (sender) sender.replaceTrack(screenTrack);
+
+        // Update local video to show screen
+        if (localVideoRef.current) localVideoRef.current.srcObject = screenStream;
+
+        // When user stops sharing, revert back to webcam
+        screenTrack.onended = () => {
+          stopScreenShare();
+        };
+
+        setScreenSharing(true);
+      } catch (err) {
+        console.error("Screen sharing failed:", err);
+      }
+    } else {
+      stopScreenShare();
+    }
+  };
+
+  const stopScreenShare = () => {
+    if (!peer || !webcamStream) return;
+
+    const videoTrack = webcamStream.getVideoTracks()[0];
+    const sender = peer.getSenders().find(s => s.track.kind === "video");
+    if (sender) sender.replaceTrack(videoTrack);
+
+    // Show webcam in local video
+    if (localVideoRef.current) localVideoRef.current.srcObject = webcamStream;
+
+    setScreenSharing(false);
   };
 
   const handleNewUserJoined = useCallback(({ emailid }) => {
@@ -131,55 +179,63 @@ function Page2() {
     setRemoteUsers([]);
   };
 
+  useEffect(() => {
+    getUserMedia();
+  }, []);
+
   return (
-    <>
-  <div className="bg-slate-900">
-    <div className=" flex flex-col items-center">
-      <h1 className="text-3xl font-bold mb-2">Video Call Room</h1>
-      <h2 className="text-lg mb-4">
-        {remoteUsers.length > 0 ? `Connected to: ${remoteUsers.join(", ")}` : "Waiting for users..."}
-      </h2>
+    <div className="bg-slate-900">
+      <div className="flex flex-col items-center">
+        <h1 className="text-3xl font-bold mb-2">Video Call Room</h1>
+        <h2 className="text-lg mb-4">
+          {remoteUsers.length > 0 ? `Connected to: ${remoteUsers.join(", ")}` : "Waiting for users..."}
+        </h2>
 
-      <div className="flex gap-4 ">
-        <video
-          ref={localVideoRef}
-          autoPlay
-          muted
-          playsInline
-          className="w-[100vh] h-[75vh] rounded-lg shadow-lg bg-black "
-        />
-        <div ref={remoteVideosContainerRef} className="flex flex-wrap gap-4" />
-      </div>
+        <div className="flex gap-4">
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            playsInline
+            className="w-[100vh] h-[75vh] rounded-lg shadow-lg bg-black "
+          />
+          <div ref={remoteVideosContainerRef} className="flex flex-wrap gap-4" />
+        </div>
 
-      <div className="flex flex-wrap gap-4 mt-2 justify-center">
-        <button
-          onClick={handleCallButton}
-          className="px-4 py-2 text-white rounded-lg shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
-        >
-          Connect Video
-        </button>
-        <button
-          onClick={toggleCamera}
-          className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
-        >
-          {cameraOn ? "Turn Camera Off" : "Turn Camera On"}
-        </button>
-        <button
-          onClick={toggleMic}
-          className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
-        >
-          {micOn ? "Mute Mic" : "Unmute Mic"}
-        </button>
-        <button
-          onClick={handleEndCall}
-          className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
-        >
-          End Call
-        </button>
+        <div className="flex flex-wrap gap-4 mt-2 justify-center">
+          <button
+            onClick={handleCallButton}
+            className="px-4 py-2 text-white rounded-lg shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
+          >
+            Connect Video
+          </button>
+          <button
+            onClick={toggleCamera}
+            className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
+          >
+            {cameraOn ? "Turn Camera Off" : "Turn Camera On"}
+          </button>
+          <button
+            onClick={toggleMic}
+            className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
+          >
+            {micOn ? "Mute Mic" : "Unmute Mic"}
+          </button>
+          <button
+            onClick={handleScreenShare}
+            className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
+          >
+            {screenSharing ? "Stop Sharing" : "Share Screen"}
+          </button>
+          <button
+            onClick={handleEndCall}
+            className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
+          >
+            End Call
+          </button>
+        </div>
       </div>
     </div>
-    </div>
-     </>
   );
 }
 

@@ -82,7 +82,7 @@ function Page2() {
       videoElement.srcObject = remotestream;
       videoElement.autoplay = true;
       videoElement.playsInline = true;
-      videoElement.className = "w-64 h-48 rounded-lg shadow-lg bg-black object-cover";
+      videoElement.className = "w-[100vh] h-[75vh] rounded-lg shadow-lg bg-black object-cover";
       remoteVideosContainerRef.current.appendChild(videoElement);
     }
   }, [remotestream]);
@@ -132,24 +132,24 @@ function Page2() {
   };
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen flex flex-col items-center">
+    <div className="p-6 bg-gray-100 flex flex-col items-center">
       <h1 className="text-3xl font-bold mb-2">Video Call Room</h1>
       <h2 className="text-lg mb-4">
         {remoteUsers.length > 0 ? `Connected to: ${remoteUsers.join(", ")}` : "Waiting for users..."}
       </h2>
 
-      <div className="flex flex-wrap gap-4 justify-center mb-6">
+      <div className="flex gap-4 ">
         <video
           ref={localVideoRef}
           autoPlay
           muted
           playsInline
-          className="w-64 h-48 rounded-lg shadow-lg bg-black object-cover"
+          className="w-[100vh] h-[75vh] rounded-lg shadow-lg bg-black "
         />
         <div ref={remoteVideosContainerRef} className="flex flex-wrap gap-4" />
       </div>
 
-      <div className="flex flex-wrap gap-4 justify-center">
+      <div className="flex flex-wrap gap-4 mt-4 justify-center">
         <button
           onClick={handleCallButton}
           className="px-4 py-2 bg-blue-600 text-black rounded-lg shadow hover:bg-blue-700 transition"

@@ -19,7 +19,6 @@ const PeerProvider = ({ children }) => {
     ]
   }), []);
 
-  // Handle remote track
   const handleTrackEvent = useCallback((event) => {
     if (event.streams && event.streams[0]) {
       setRemotestream(event.streams[0]);
@@ -33,12 +32,10 @@ const PeerProvider = ({ children }) => {
     };
   }, [peer, handleTrackEvent]);
 
-  // Send local stream to peer
   const sendStream = useCallback((stream) => {
     if (!stream) return;
     setLocalStream(stream);
     stream.getTracks().forEach((track) => {
-      // Check if track already exists to prevent duplicate sender errors
       const sender = peer.getSenders().find((s) => s.track && s.track.kind === track.kind);
       if (!sender) {
         peer.addTrack(track, stream);
@@ -46,14 +43,12 @@ const PeerProvider = ({ children }) => {
     });
   }, [peer]);
 
-  // Create offer
   const createOffer = useCallback(async () => {
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
     return offer;
   }, [peer]);
 
-  // Create answer
   const createAnswer = useCallback(async (offer) => {
     await peer.setRemoteDescription(offer);
     const answer = await peer.createAnswer();
@@ -61,12 +56,11 @@ const PeerProvider = ({ children }) => {
     return answer;
   }, [peer]);
 
-  // Set remote description (for answers)
+
   const setRemoteDescription = useCallback(async (answer) => {
     await peer.setRemoteDescription(answer);
   }, [peer]);
 
-  // Handle ICE candidates
   const addIceCandidate = useCallback(async (candidate) => {
     if (!candidate) return;
     try {

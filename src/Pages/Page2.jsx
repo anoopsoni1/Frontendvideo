@@ -4,6 +4,7 @@ import { Usesocket } from "../Provider/Socket";
 import { Usepeer } from "../Provider/Peer";
 
 function Page2() {
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const socket = Usesocket();
   const {
     peer,
@@ -25,35 +26,33 @@ function Page2() {
   const localVideoRef = useRef(null);
   const remoteVideosContainerRef = useRef(null);
 
-  // Get webcam stream
   const getUserMedia = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      setStreamed(stream);
-      setWebcamStream(stream);
+        setStreamed(stream);
+       setWebcamStream(stream);
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
     } catch (err) {
       console.error("Failed to get user media:", err);
     }
   };
-
-  // Screen sharing function
   const handleScreenShare = async () => {
+    
     if (!peer) return;
 
     if (!screenSharing) {
       try {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
         const screenTrack = screenStream.getVideoTracks()[0];
-
-        // Replace the video track in peer connection
+     
+       
         const sender = peer.getSenders().find(s => s.track.kind === "video");
         if (sender) sender.replaceTrack(screenTrack);
 
-        // Update local video to show screen
+       
         if (localVideoRef.current) localVideoRef.current.srcObject = screenStream;
 
-        // When user stops sharing, revert back to webcam
+       
         screenTrack.onended = () => {
           stopScreenShare();
         };
@@ -74,7 +73,7 @@ function Page2() {
     const sender = peer.getSenders().find(s => s.track.kind === "video");
     if (sender) sender.replaceTrack(videoTrack);
 
-    // Show webcam in local video
+   
     if (localVideoRef.current) localVideoRef.current.srcObject = webcamStream;
 
     setScreenSharing(false);
@@ -221,12 +220,14 @@ function Page2() {
           >
             {micOn ? "Mute Mic" : "Unmute Mic"}
           </button>
-          <button
-            onClick={handleScreenShare}
-            className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
-          >
-            {screenSharing ? "Stop Sharing" : "Share Screen"}
-          </button>
+         {!isMobile && (
+  <button
+    onClick={handleScreenShare}
+    className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
+  >
+    {screenSharing ? "Stop Sharing" : "Share Screen"}
+  </button>
+)}
           <button
             onClick={handleEndCall}
             className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"

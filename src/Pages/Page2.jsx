@@ -132,7 +132,9 @@ function Page2() {
   };
 
   return (
-    <div className="p-6 bg-gray-100 flex flex-col items-center">
+    <>
+  <div className="bg-slate-900">
+    <div className="p-6 flex flex-col items-center">
       <h1 className="text-3xl font-bold mb-2">Video Call Room</h1>
       <h2 className="text-lg mb-4">
         {remoteUsers.length > 0 ? `Connected to: ${remoteUsers.join(", ")}` : "Waiting for users..."}
@@ -149,33 +151,35 @@ function Page2() {
         <div ref={remoteVideosContainerRef} className="flex flex-wrap gap-4" />
       </div>
 
-      <div className="flex flex-wrap gap-4 mt-4 justify-center">
+      <div className="flex flex-wrap gap-4 mt-2 justify-center">
         <button
           onClick={handleCallButton}
-          className="px-4 py-2 bg-blue-600 text-black rounded-lg shadow hover:bg-blue-700 transition"
+          className="px-4 py-2 text-white rounded-lg shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
         >
           Connect Video
         </button>
         <button
           onClick={toggleCamera}
-          className="px-4 py-2 bg-yellow-500 text-black rounded-lg shadow hover:bg-yellow-600 transition"
+          className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
         >
           {cameraOn ? "Turn Camera Off" : "Turn Camera On"}
         </button>
         <button
           onClick={toggleMic}
-          className="px-4 py-2 bg-green-500 text-black rounded-lg shadow hover:bg-green-600 transition"
+          className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
         >
           {micOn ? "Mute Mic" : "Unmute Mic"}
         </button>
         <button
           onClick={handleEndCall}
-          className="px-4 py-2 bg-red-600 text-black rounded-lg shadow hover:bg-red-700 transition"
+          className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
         >
           End Call
         </button>
       </div>
     </div>
+    </div>
+     </>
   );
 }
 

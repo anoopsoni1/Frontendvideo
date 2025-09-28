@@ -174,8 +174,8 @@ function Page2() {
     if (streamed) streamed.getTracks().forEach((track) => track.stop());
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideosContainerRef.current) remoteVideosContainerRef.current.innerHTML = "";
+      window.location.herf("/")
     setRemoteUsers([]);
-     window.location.reload();
   };
 
   useEffect(() => {

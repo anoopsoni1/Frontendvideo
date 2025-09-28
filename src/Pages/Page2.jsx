@@ -196,7 +196,7 @@ function Page2() {
             autoPlay
             muted
             playsInline
-            className="sm:w-[100vh] w-[320px] sm:h-[75vh]  aspect-square rounded-lg shadow-lg bg-black "
+            className="sm:w-[100vh] w-[320px] sm:h-[75vh] h-auto aspect-video rounded-lg shadow-lg bg-black "
           />
           <div ref={remoteVideosContainerRef} className="flex flex-wrap gap-4" />
         </div>

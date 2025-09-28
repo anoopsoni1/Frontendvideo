@@ -36,13 +36,15 @@ function Page2() {
     }
   };
   const handleScreenShare = async () => {
+    if (!navigator.mediaDevices.getDisplayMedia) {
+    alert("Your browser does not support screen sharing."); return }
     if (!peer) return;
 
     if (!screenSharing) {
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
         const screenTrack = screenStream.getVideoTracks()[0];
-     
+      
        
         const sender = peer.getSenders().find(s => s.track.kind === "video");
         if (sender) sender.replaceTrack(screenTrack);

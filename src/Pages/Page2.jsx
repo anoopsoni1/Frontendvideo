@@ -189,7 +189,7 @@ remoteVideosContainerRef.current.appendChild(videoElement);
 
   return (
     <>
-    <Chat />
+    
 <div style={{ height: "100dvh" }} className="bg-black flex flex-col relative overflow-hidden">
   <div className="absolute top-3 left-0 right-0 text-center z-20">
     <div className="sm:text-3xl text-[20px] font-bold text-white">
@@ -201,7 +201,9 @@ remoteVideosContainerRef.current.appendChild(videoElement);
         : "Waiting for users..."}
     </h2>
   </div>
-
+<div>
+  <Chat />
+</div>
 
   <div className="flex-1 relative">
     <div

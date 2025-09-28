@@ -3,7 +3,6 @@ import { Usesocket } from "../Provider/Socket";
 import { Usepeer } from "../Provider/Peer";
 
 function Page2() {
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const socket = Usesocket();
   const {
     peer,
@@ -36,7 +35,6 @@ function Page2() {
     }
   };
   const handleScreenShare = async () => {
-    
     if (!peer) return;
 
     if (!screenSharing) {
@@ -128,7 +126,7 @@ function Page2() {
       videoElement.srcObject = remotestream;
       videoElement.autoplay = true;
       videoElement.playsInline = true;
-      videoElement.className = "w-[100vh] h-[75vh] rounded-lg shadow-lg bg-black object-cover";
+      videoElement.className = "sm:w-[100vh] sm:h-[75vh]  rounded-lg shadow-lg bg-black object-cover";
       remoteVideosContainerRef.current.appendChild(videoElement);
     }
   }, [remotestream]);
@@ -174,8 +172,8 @@ function Page2() {
     if (streamed) streamed.getTracks().forEach((track) => track.stop());
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideosContainerRef.current) remoteVideosContainerRef.current.innerHTML = "";
-      window.location.herf("/")
-    setRemoteUsers([]);
+      window.location.href = "/"
+     setRemoteUsers([]);
   };
 
   useEffect(() => {
@@ -183,54 +181,53 @@ function Page2() {
   }, []);
 
   return (
-    <div className="bg-slate-900">
+    <div className="bg-black h-screen">
       <div className="flex flex-col items-center">
-        <h1 className="text-3xl font-bold mb-2">Video Call Room</h1>
-        <h2 className="text-lg mb-4">
+        <div className="sm:text-3xl text-[25px] font-bold mb-2">Room</div>
+        <h2 className="text-lg mb-2">
           {remoteUsers.length > 0 ? `Connected to: ${remoteUsers.join(", ")}` : "Waiting for users..."}
         </h2>
 
-        <div className="flex gap-4">
+        <div className="sm:flex gap-4">
           <video
             ref={localVideoRef}
             autoPlay
             muted
             playsInline
-            className="sm:w-[100vh] w-[320px] sm:h-[75vh] h-auto aspect-video rounded-lg shadow-lg bg-black "
+            className="sm:w-[100vh] sm:h-[75vh] rounded-lg shadow-lg bg-black sm:block absolute inset-0 w-full h-full object-cover"
           />
           <div ref={remoteVideosContainerRef} className="flex flex-wrap gap-4" />
         </div>
 
-        <div className="flex flex-wrap gap-4 mt-2 justify-center">
+        <div className=" z-50 relative top-[80vh] flex text-[6px] sm:gap-4 gap-2 mt-2 justify-center border-[2px] sm:p-2 bg-neutral-100 rounded-2xl  ">
           <button
             onClick={handleCallButton}
-            className="px-4 py-2 text-white rounded-lg shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
+            className="sm:px-2 sm:py-1 text-white rounded-lg shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
           >
             Connect Video
           </button>
           <button
             onClick={toggleCamera}
-            className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
+            className="sm:px-2 sm:py-1 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
           >
             {cameraOn ? "Turn Camera Off" : "Turn Camera On"}
           </button>
           <button
             onClick={toggleMic}
-            className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
+            className="sm:px-2 sm:py-1 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
           >
             {micOn ? "Mute Mic" : "Unmute Mic"}
           </button>
-         {!isMobile && (
-  <button
+         
+       <button
     onClick={handleScreenShare}
-    className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
+    className="sm:px-2 sm:py-1 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
   >
     {screenSharing ? "Stop Sharing" : "Share Screen"}
-  </button>
-)}
+       </button>
           <button
             onClick={handleEndCall}
-            className="px-4 py-2 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
+            className="sm:px-2 sm:py-1 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
           >
             End Call
           </button>

@@ -1,4 +1,3 @@
-// ... your existing imports
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Usesocket } from "../Provider/Socket";
 import { Usepeer } from "../Provider/Peer";
@@ -196,7 +195,7 @@ function Page2() {
             autoPlay
             muted
             playsInline
-            className="w-[100vh] h-[75vh] rounded-lg shadow-lg bg-black "
+            className="sm:w-[100vh] w-[320px] h-[75vh] rounded-lg shadow-lg bg-black "
           />
           <div ref={remoteVideosContainerRef} className="flex flex-wrap gap-4" />
         </div>

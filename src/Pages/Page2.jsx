@@ -211,11 +211,11 @@ remoteVideosContainerRef.current.appendChild(videoElement);
       autoPlay
       muted
       playsInline
-      className="absolute bottom-4 right-4 w-[120px] h-[180px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg object-cover border-2 border-white z-30"
+      className="absolute bottom-4  right-4 w-[120px] h-[180px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg object-cover border-2 border-white z-30"
     />
   </div>
   <div className="grid place-items-center">
- <div className="sm:p-3 flex gap-[2.9px] sm:border-2 sm:border-amber-50  sm:backdrop-contrast-50 backdrop-blur-md rounded-3xl sm:bg-slate-950/50 sm:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] ">
+ <div className="md:p-3 flex gap-[2.9px] sm:border-2 sm:border-amber-50  sm:backdrop-contrast-50 backdrop-blur-md rounded-3xl sm:bg-slate-950/50 sm:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] ">
     <button
       onClick={handleCallButton}
       className="sm:px-4 sm:py-3  text-white bg-gradient-to-b from-green-400 to-green-600 "

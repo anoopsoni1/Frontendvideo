@@ -137,8 +137,8 @@ function Page2() {
     socket.on("Call-accepted", handleCallAccepted);
 
     // Chat listener
-    socket.on("chat-message", ({ message }) => {
-      setMessages((prev) => [...prev, { self: false, message }]);
+    socket.on("chat-message", ({ message , from  }) => {
+      setMessages((prev) => [...prev, { self: false, message , from }]);
     });
 
     return () => {
@@ -183,11 +183,12 @@ function Page2() {
     setMessages([]);
   };
 
-  // Chat send function
+const userId = "me";
+
   const sendMessage = () => {
     if (!chatInput.trim()) return;
-    socket.emit("chat-message", { message: chatInput });
-    setMessages((prev) => [...prev, { self: true, message: chatInput }]);
+    socket.emit("chat-message", { message: chatInput , from : userId });
+    setMessages((prev) => [...prev, { self: true, message: chatInput  ,from:userId}]);
     setChatInput("");
   };
 
@@ -250,7 +251,7 @@ function Page2() {
       </div>
 
       {/* Chat Panel */}
-      <div className="absolute right-0 bottom-0 w-full sm:w-1/4 h-1/2 bg-black/80 backdrop-blur-md flex flex-col p-2 gap-2 overflow-hidden rounded-tl-xl z-40">
+      <div className="absolute left-0 bottom-0 w-full sm:w-1/4 h-1/2 bg-black/80 backdrop-blur-md flex flex-col p-2 gap-2 overflow-hidden rounded-tl-xl z-40">
         <div className="flex-1 overflow-y-auto space-y-1">
           {messages.map((msg, index) => (
             <div
@@ -259,6 +260,9 @@ function Page2() {
                 msg.self ? "bg-blue-500 self-end" : "bg-gray-700 self-start"
               }`}
             >
+              {!msg.self && (
+        <div className="text-xs text-gray-300 mb-1">{msg.from}</div>
+      )}
               {msg.message}
             </div>
           ))}

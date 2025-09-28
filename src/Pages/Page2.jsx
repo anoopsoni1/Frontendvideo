@@ -126,7 +126,7 @@ function Page2() {
       videoElement.srcObject = remotestream;
       videoElement.autoplay = true;
       videoElement.playsInline = true;
-      videoElement.className = "sm:w-[100vh] sm:h-[75vh]  rounded-lg shadow-lg bg-black object-cover";
+      videoElement.className = "w-[100vh] h-[75vh] rounded-lg shadow-lg bg-black object-cover";
       remoteVideosContainerRef.current.appendChild(videoElement);
     }
   }, [remotestream]);
@@ -181,59 +181,74 @@ function Page2() {
   }, []);
 
   return (
-    <div className="bg-black h-screen">
-      <div className="flex flex-col items-center">
-        <div className="sm:text-3xl text-[25px] font-bold mb-2">Room</div>
-        <h2 className="text-lg mb-2">
-          {remoteUsers.length > 0 ? `Connected to: ${remoteUsers.join(", ")}` : "Waiting for users..."}
-        </h2>
-
-        <div className="sm:flex gap-4">
-          <video
-            ref={localVideoRef}
-            autoPlay
-            muted
-            playsInline
-            className="sm:w-[100vh] sm:h-[75vh] rounded-lg shadow-lg bg-black sm:block absolute inset-0 w-full h-full object-cover"
-          />
-          <div ref={remoteVideosContainerRef} className="flex flex-wrap gap-4" />
-        </div>
-
-        <div className=" z-50 relative top-[80vh] flex text-[6px] sm:gap-4 gap-2 mt-2 justify-center border-[2px] sm:p-2 bg-neutral-100 rounded-2xl  ">
-          <button
-            onClick={handleCallButton}
-            className="sm:px-2 sm:py-1 text-white rounded-lg shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
-          >
-            Connect Video
-          </button>
-          <button
-            onClick={toggleCamera}
-            className="sm:px-2 sm:py-1 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
-          >
-            {cameraOn ? "Turn Camera Off" : "Turn Camera On"}
-          </button>
-          <button
-            onClick={toggleMic}
-            className="sm:px-2 sm:py-1 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
-          >
-            {micOn ? "Mute Mic" : "Unmute Mic"}
-          </button>
-         
-       <button
-    onClick={handleScreenShare}
-    className="sm:px-2 sm:py-1 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
-  >
-    {screenSharing ? "Stop Sharing" : "Share Screen"}
-       </button>
-          <button
-            onClick={handleEndCall}
-            className="sm:px-2 sm:py-1 bg-gradient-to-b from-yellow-600 to-yellow-800 hover:bg-yellow-500 transition"
-          >
-            End Call
-          </button>
-        </div>
-      </div>
+<div style={{ height: "100dvh" }} className="bg-black flex flex-col relative">
+  {/* Header */}
+  <div className="absolute top-3 left-0 right-0 text-center z-20">
+    <div className="sm:text-3xl text-[20px] font-bold text-white">
+      Room
     </div>
+    <h2 className="text-sm text-gray-300">
+      {remoteUsers.length > 0
+        ? `Connected to: ${remoteUsers.join(", ")}`
+        : "Waiting for users..."}
+    </h2>
+  </div>
+
+  {/* Remote Video Fullscreen */}
+  <div className="flex-1 relative">
+    <div
+      ref={remoteVideosContainerRef}
+      className="absolute inset-0 w-full h-full bg-black"
+    >
+      {/* Remote videos will be appended here dynamically */}
+    </div>
+
+    {/* Local Video Floating (small) */}
+    <video
+      ref={localVideoRef}
+      autoPlay
+      muted
+      playsInline
+      className="absolute bottom-20 right-4 w-[120px] h-[180px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg object-cover border-2 border-white z-30"
+    />
+  </div>
+
+  {/* Bottom Controls */}
+  <div className="p-3 bg-neutral-900 flex justify-center gap-3 sm:gap-4 rounded-t-2xl z-20">
+    <button
+      onClick={handleCallButton}
+      className="sm:px-4 px-2 sm:py-2 py-1 text-white rounded-full shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:from-yellow-500 hover:to-yellow-700 transition"
+    >
+      Connect
+    </button>
+    <button
+      onClick={toggleCamera}
+      className="sm:px-4 px-2 sm:py-2 py-1 text-white rounded-full shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:from-yellow-500 hover:to-yellow-700 transition"
+    >
+      {cameraOn ? "Cam Off" : "Cam On"}
+    </button>
+    <button
+      onClick={toggleMic}
+      className="sm:px-4 px-2 sm:py-2 py-1 text-white rounded-full shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:from-yellow-500 hover:to-yellow-700 transition"
+    >
+      {micOn ? "Mute" : "Unmute"}
+    </button>
+    <button
+      onClick={handleScreenShare}
+      className="sm:px-4 px-2 sm:py-2 py-1 text-white rounded-full shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:from-yellow-500 hover:to-yellow-700 transition"
+    >
+      {screenSharing ? "Stop" : "Share"}
+    </button>
+    <button
+      onClick={handleEndCall}
+      className="sm:px-4 px-2 sm:py-2 py-1 text-white rounded-full shadow bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 transition"
+    >
+      End
+    </button>
+  </div>
+</div>
+
+
   );
 }
 

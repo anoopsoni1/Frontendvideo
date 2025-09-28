@@ -7,7 +7,7 @@ export const Usesocket = ()=>{
  return useContext(Socketcontext);
 }
 
-export const  SocketProvider = (props) => {
+ const  SocketProvider = (props) => {
     const socket = useMemo(() => 
         io('https://backendvid.onrender.com' ,
            { path: '/socket.io'},

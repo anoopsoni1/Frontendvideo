@@ -1,97 +1,78 @@
-import React, { createContext, useContext, useMemo, useState, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useCallback } from "react";
 
+// Create the context
 const PeerContext = createContext(null);
 
+// Custom hook to easily access the context
 export const Usepeer = () => useContext(PeerContext);
 
-const PeerProvider = ({ children }) => {
-  const [remotestream, setRemotestream] = useState(null);
-  const [localStream, setLocalStream] = useState(null);
-
-  const peer = useMemo(() => new RTCPeerConnection({
-    iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      {
-        urls: "turn:turn.myserver.com:3478?transport=tcp",
-        username: "user",
-        credential: "pass"
-      }
-    ]
-  }), []);
-
-  const handleTrackEvent = useCallback((event) => {
-    if (event.streams && event.streams[0]) {
-      setRemotestream(event.streams[0]);
-    }
+// The provider component
+export const PeerProvider = ({ children }) => {
+  // This function creates a new, fully configured peer connection.
+  // Your main component will call this for each new user that joins.
+  const createPeerConnection = useCallback(() => {
+    const peer = new RTCPeerConnection({
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        
+         {
+          urls: "turn:your-turn-server.com:3478",
+          username: "your-username",
+          credential: "your-password"
+         }
+      ],
+    });
+    return peer;
   }, []);
 
-  useEffect(() => {
-    peer.addEventListener("track", handleTrackEvent);
-    return () => {
-      peer.removeEventListener("track", handleTrackEvent);
-    };
-  }, [peer, handleTrackEvent]);
-
-  const sendStream = useCallback((stream) => {
-    if (!stream) return;
-    setLocalStream(stream);
-    stream.getTracks().forEach((track) => {
-      const sender = peer.getSenders().find((s) => s.track && s.track.kind === track.kind);
-      if (!sender) {
-        peer.addTrack(track, stream);
-      }
-    });
-  }, [peer]);
-
-  const createOffer = useCallback(async () => {
+  
+  const createOffer = useCallback(async (peer) => {
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
     return offer;
-  }, [peer]);
+  }, []);
 
-  const createAnswer = useCallback(async (offer) => {
-    await peer.setRemoteDescription(offer);
+  const createAnswer = useCallback(async (peer, offer) => {
+    await peer.setRemoteDescription(new RTCSessionDescription(offer));
     const answer = await peer.createAnswer();
     await peer.setLocalDescription(answer);
     return answer;
-  }, [peer]);
+  }, []);
 
+  const setRemoteDescription = useCallback(async (peer, answer) => {
+    await peer.setRemoteDescription(new RTCSessionDescription(answer));
+  }, []);
 
-  const setRemoteDescription = useCallback(async (answer) => {
-    await peer.setRemoteDescription(answer);
-  }, [peer]);
-
-  const addIceCandidate = useCallback(async (candidate) => {
+  const sendStream = useCallback((peer, stream) => {
+    if (!stream) return;
+    stream.getTracks().forEach((track) => {
+      peer.addTrack(track, stream);
+    });
+  }, []);
+  
+  const addIceCandidate = useCallback(async (peer, candidate) => {
     if (!candidate) return;
     try {
-      await peer.addIceCandidate(candidate);
+        const iceCandidate = new RTCIceCandidate(candidate);
+        await peer.addIceCandidate(iceCandidate);
     } catch (err) {
-      console.error("Failed to add ICE candidate:", err);
+        console.error("Error adding received ICE candidate", err);
     }
-  }, [peer]);
+  }, []);
 
 
-  const onIceCandidate = useCallback((callback) => {
-    peer.addEventListener("icecandidate", (event) => {
-      if (event.candidate) callback(event.candidate);
-    });
-  }, [peer]);
+  const value = {
+    createPeerConnection,
+    createOffer,
+    createAnswer,
+    setRemoteDescription,
+    sendStream,
+    addIceCandidate,
+  };
 
   return (
-    <PeerContext.Provider value={{
-      peer,
-      sendStream,
-      createOffer,
-      createAnswer,
-      setRemoteDescription,
-      remotestream,
-      addIceCandidate,
-      onIceCandidate,
-      localStream
-    }}>
+    <PeerContext.Provider value={value}>
       {children}
     </PeerContext.Provider>
   );
 };
-
-export default PeerProvider;

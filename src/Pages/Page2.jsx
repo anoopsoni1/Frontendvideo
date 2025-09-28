@@ -129,7 +129,7 @@ function Page2() {
       videoElement.srcObject = remotestream;
       videoElement.autoplay = true;
       videoElement.playsInline = true;
-      videoElement.className = "absolute inset-0 w-full h-full object-cover bg-black";
+      videoElement.className = "absolute inset-0 w-full h-full object-cover bg-black z-50";
       remoteVideosContainerRef.current.appendChild(videoElement);
     }
   }, [remotestream]);

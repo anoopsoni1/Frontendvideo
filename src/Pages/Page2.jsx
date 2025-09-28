@@ -21,15 +21,15 @@ function Page2() {
   const [screenSharing, setScreenSharing] = useState(false);
   const [webcamStream, setWebcamStream] = useState(null);
 
-  // Chat state
+
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
-  const [chatVisible, setChatVisible] = useState(false); // Chat toggle
+  const [chatVisible, setChatVisible] = useState(false); 
 
   const localVideoRef = useRef(null);
   const remoteVideosContainerRef = useRef(null);
 
-  const userId = "me"; // Replace with real user ID/email if available
+  let userId = null; 
 
   const getUserMedia = async () => {
     try {
@@ -139,7 +139,6 @@ function Page2() {
     socket.on("incoming-call", handleIncomingCall);
     socket.on("Call-accepted", handleCallAccepted);
 
-    // Chat listener
     socket.on("chat-message", ({ message, from }) => {
       setMessages((prev) => [...prev, { self: false, message, from }]);
     });
@@ -162,6 +161,7 @@ function Page2() {
     sendStream(streamed);
     remoteUsers.forEach((remoteEmail) => {
       socket.emit("call-user", { emailid: remoteEmail, offer });
+         userId = {remoteEmail}
     });
   };
 

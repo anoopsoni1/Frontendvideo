@@ -4,7 +4,7 @@ const PeerContext = createContext(null);
 
 export const Usepeer = () => useContext(PeerContext);
 
-const PeerProvider = ({ children }) => {
+export const PeerProvider = ({ children }) => {
   const [remotestream, setRemotestream] = useState(null);
   const [localStream, setLocalStream] = useState(null);
 

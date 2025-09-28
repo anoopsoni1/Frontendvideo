@@ -37,7 +37,8 @@ function Page2() {
   };
   const handleScreenShare = async () => {
     if (!navigator.mediaDevices.getDisplayMedia) {
-    alert("Your browser does not support screen sharing."); return }
+    alert("Your browser does not support screen sharing."); return
+     }
     if (!peer) return;
 
     if (!screenSharing) {
@@ -204,9 +205,7 @@ remoteVideosContainerRef.current.appendChild(videoElement);
       ref={remoteVideosContainerRef}
       className="absolute inset-0 w-full h-full bg-black"
     >
- 
     </div>
-
     <video
       ref={localVideoRef}
       autoPlay
@@ -216,7 +215,7 @@ remoteVideosContainerRef.current.appendChild(videoElement);
     />
   </div>
   <div className="grid place-items-center">
- <div className="sm:p-3 flex gap-1 sm:border-2 sm:border-amber-50  sm:backdrop-contrast-50 backdrop-blur-md rounded-3xl sm:bg-slate-950/50 sm:gap-6 z-20 sm:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] ">
+ <div className="sm:p-3 flex gap-[2.9px] sm:border-2 sm:border-amber-50  sm:backdrop-contrast-50 backdrop-blur-md rounded-3xl sm:bg-slate-950/50 sm:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] ">
     <button
       onClick={handleCallButton}
       className="sm:px-4 sm:py-3  text-white bg-gradient-to-b from-green-400 to-green-600 "
@@ -225,25 +224,25 @@ remoteVideosContainerRef.current.appendChild(videoElement);
     </button>
     <button
       onClick={toggleCamera}
-      className="sm:px-4  sm:py-2 text-white rounded-[20px]  bg-gradient-to-b from-orange-400 to-orange-600 "
+      className="sm:px-4 sm:py-3 text-white  bg-gradient-to-b from-orange-400 to-orange-600 "
     >
-      {cameraOn ? "Cam off" : "Cam On"}
+      {cameraOn ? "Camoff" : "Cam On"}
     </button>
     <button
       onClick={toggleMic}
-      className="sm:px-4 sm:py-2 text-white rounded-[20px] shadow bg-gradient-to-b from-pink-300 to-pink-800"
+      className="sm:px-4 sm:py-3 text-white  shadow bg-gradient-to-b from-pink-300 to-pink-800"
     >
       {micOn ? "Mute" : "Unmute"}
     </button>
     <button
       onClick={handleScreenShare}
-      className="sm:px-4 sm:py-2 text-white rounded-[20px] shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:from-yellow-500 hover:to-yellow-700 transition"
+      className="sm:px-4 sm:py-3 text-white shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:from-yellow-500 hover:to-yellow-700 transition"
     >
       {screenSharing ? "Stop" : "Share"}
     </button>
     <button
       onClick={handleEndCall}
-      className="sm:px-4  sm:py-2 text-white rounded-[20px] shadow bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 transition"
+      className="sm:px-4  sm:py-3 text-white rounded-[20px] shadow bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 transition"
     >
       End
     </button>

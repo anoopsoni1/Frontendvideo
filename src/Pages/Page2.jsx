@@ -24,9 +24,12 @@ function Page2() {
   // Chat state
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
+  const [chatVisible, setChatVisible] = useState(false); // Chat toggle
 
   const localVideoRef = useRef(null);
   const remoteVideosContainerRef = useRef(null);
+
+  const userId = "me"; // Replace with real user ID/email if available
 
   const getUserMedia = async () => {
     try {
@@ -137,8 +140,8 @@ function Page2() {
     socket.on("Call-accepted", handleCallAccepted);
 
     // Chat listener
-    socket.on("chat-message", ({ message , from  }) => {
-      setMessages((prev) => [...prev, { self: false, message , from }]);
+    socket.on("chat-message", ({ message, from }) => {
+      setMessages((prev) => [...prev, { self: false, message, from }]);
     });
 
     return () => {
@@ -183,18 +186,17 @@ function Page2() {
     setMessages([]);
   };
 
-const userId = "me";
-
   const sendMessage = () => {
     if (!chatInput.trim()) return;
-    socket.emit("chat-message", { message: chatInput , from : userId });
-    setMessages((prev) => [...prev, { self: true, message: chatInput  ,from:userId}]);
+    socket.emit("chat-message", { message: chatInput, from: userId });
+    setMessages((prev) => [...prev, { self: true, message: chatInput, from: userId }]);
     setChatInput("");
   };
 
+  const toggleChat = () => setChatVisible((prev) => !prev);
+
   return (
     <div style={{ height: "100dvh" }} className="bg-black flex flex-col relative overflow-hidden">
-      {/* Header */}
       <div className="absolute top-3 left-0 right-0 text-center z-20">
         <div className="sm:text-3xl text-[20px] font-bold text-white">Room</div>
         <h2 className="text-sm text-gray-300">
@@ -202,7 +204,6 @@ const userId = "me";
         </h2>
       </div>
 
-      {/* Video section */}
       <div className="flex-1 relative">
         <div ref={remoteVideosContainerRef} className="absolute inset-0 w-full h-full bg-black"></div>
         <video
@@ -210,48 +211,57 @@ const userId = "me";
           autoPlay
           muted
           playsInline
-          className="absolute bottom-4 right-4 w-[120px] h-[180px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg object-cover border-2 border-white z-30"
+          className="absolute bottom-4 left-4 w-[120px] h-[180px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg object-cover border-2 border-white z-30"
         />
       </div>
 
-      {/* Control buttons */}
       <div className="grid place-items-center">
         <div className="md:p-3 flex gap-[2.9px] md:border-2 md:border-amber-50  md:backdrop-contrast-50 backdrop-blur-md rounded-3xl md:bg-slate-950/50 md:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center ">
           <button
             onClick={handleCallButton}
-            className="sm:px-4 sm:py-2 text-center text-white bg-gradient-to-b from-green-400 to-green-600 "
+            className="sm:px-4 sm:py-2 rounded-lg text-white hover:bg-gray-600 "
           >
             Connect
           </button>
           <button
             onClick={toggleCamera}
-            className="sm:px-4 sm:py-2 text-center text-white  bg-gradient-to-b from-orange-400 to-orange-600 "
+            className="sm:px-4 sm:py-2 rounded-lg text-white hover:bg-gray-600 "
           >
             {cameraOn ? "Camoff" : "Cam On"}
           </button>
           <button
             onClick={toggleMic}
-            className="sm:px-4 sm:py-2 text-white text-center  shadow bg-gradient-to-b from-pink-300 to-pink-800"
+            className="sm:px-4 sm:py-2 text-center  shadow rounded-lg text-white hover:bg-gray-600"
           >
             {micOn ? "Mute" : "Unmute"}
           </button>
           <button
             onClick={handleScreenShare}
-            className="sm:px-4 sm:py-2 text-white shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:from-yellow-500 hover:to-yellow-700 transition text-center"
+            className="sm:px-4 sm:py-2 rounded-lg text-white hover:bg-gray-600"
           >
             {screenSharing ? "Stop" : "Share"}
           </button>
           <button
             onClick={handleEndCall}
-            className="sm:px-4  sm:py-2 text-white rounded-[20px] shadow bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 transition text-center"
+            className="sm:px-4  sm:py-2 rounded-lg text-white hover:bg-gray-600"
           >
             End
           </button>
         </div>
       </div>
 
-      {/* Chat Panel */}
-      <div className="absolute left-0 bottom-0 w-full sm:w-1/4 h-1/2 bg-black/80 backdrop-blur-md flex flex-col p-2 gap-2 overflow-hidden rounded-tl-xl z-40">
+      <button
+        onClick={toggleChat}
+        className="absolute right-2 top-1/2 transform -translate-y-1/2 z-50 bg-green-600 text-white px-3 py-2 rounded-l-full shadow-lg"
+      >
+        {chatVisible ? "Close Chat" : "Open Chat"}
+      </button>
+
+      <div
+        className={`absolute right-0 bottom-0 w-full sm:w-[50vh] h-1/2 bg-black/80 backdrop-blur-md flex flex-col p-2 gap-2 overflow-hidden rounded-tl-xl z-40 transition-transform duration-300 ${
+          chatVisible ? "-translate-x-1" : "translate-x-full"
+        }`}
+      >
         <div className="flex-1 overflow-y-auto space-y-1">
           {messages.map((msg, index) => (
             <div
@@ -260,9 +270,7 @@ const userId = "me";
                 msg.self ? "bg-blue-500 self-end" : "bg-gray-700 self-start"
               }`}
             >
-              {!msg.self && (
-        <div className="text-xs text-gray-300 mb-1">{msg.from}</div>
-      )}
+              {!msg.self && <div className="text-xs text-gray-300 mb-1">{msg.from}</div>}
               {msg.message}
             </div>
           ))}

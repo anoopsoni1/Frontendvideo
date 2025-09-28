@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState, useCallback, memo } from "react";
 import { Usesocket } from "../Provider/Socket";
 import { Usepeer } from "../Provider/Peer";
 
-// Memoized component for remote videos to prevent unnecessary re-renders
 const RemoteVideo = memo(({ stream }) => {
   const videoRef = useRef(null);
   useEffect(() => {
@@ -25,19 +24,15 @@ function Page2() {
   const socket = Usesocket();
   const { createPeerConnection, createOffer, createAnswer, setRemoteDescription, sendStream, addIceCandidate } = Usepeer();
 
-  // Refs for non-rendering data
   const peerConnectionsRef = useRef({});
   const localStreamRef = useRef(null);
   const localVideoRef = useRef(null);
   const screenShareStreamRef = useRef(null);
 
-  // State for rendering updates
   const [remoteStreams, setRemoteStreams] = useState({});
   const [cameraOn, setCameraOn] = useState(true);
   const [micOn, setMicOn] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-
-  // --- Core WebRTC Logic ---
 
   const setupPeerConnection = useCallback((socketId) => {
     const peer = createPeerConnection();
@@ -60,7 +55,6 @@ function Page2() {
     return peer;
   }, [createPeerConnection, sendStream, socket]);
 
-  // Main effect for handling media and socket events
   useEffect(() => {
     const getMedia = async () => {
       try {
@@ -126,12 +120,10 @@ function Page2() {
       socket.off("call-accepted", handleCallAccepted);
       socket.off("user-left", handleUserLeft);
       socket.off("ice-candidate", handleIceCandidate);
-      handleEndCall(); // Ensure cleanup on component unmount
+      handleEndCall();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, setupPeerConnection, createOffer, createAnswer, setRemoteDescription, addIceCandidate]);
-
-  // --- Control Functions ---
 
   const toggleCamera = () => {
     if (localStreamRef.current) {
@@ -176,7 +168,6 @@ function Page2() {
         screenShareStreamRef.current = screenStream;
         const screenTrack = screenStream.getVideoTracks()[0];
 
-        // Replace the video track in all active peer connections
         Object.values(peerConnectionsRef.current).forEach(peer => {
           const sender = peer.getSenders().find(s => s.track && s.track.kind === 'video');
           if (sender) {
@@ -189,7 +180,6 @@ function Page2() {
         }
         setIsScreenSharing(true);
         
-        // When the user clicks the browser's "Stop sharing" button
         screenTrack.onended = () => {
           stopScreenShare();
         };
@@ -199,31 +189,19 @@ function Page2() {
     }
   }, [isScreenSharing, stopScreenShare]);
 
-
   const handleEndCall = () => {
     socket.emit("room:leave");
-
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
-      localStreamRef.current = null;
-    }
-    if (screenShareStreamRef.current) {
-        screenShareStreamRef.current.getTracks().forEach(track => track.stop());
-        screenShareStreamRef.current = null;
     }
     Object.values(peerConnectionsRef.current).forEach(peer => peer.close());
     peerConnectionsRef.current = {};
     setRemoteStreams({});
-
-    // Optional: redirect user after ending call
-    // window.location.href = "/";
   };
-
 
   return (
     <div className="bg-slate-900 min-h-screen text-white p-4 flex flex-col">
       <h1 className="text-3xl font-bold mb-4 text-center">Video Call Room</h1>
-      
       <div className="flex-grow grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-7xl mx-auto">
         <div className="relative aspect-video">
           <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full rounded-lg shadow-lg bg-black object-cover" />

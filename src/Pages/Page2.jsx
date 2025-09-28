@@ -122,12 +122,14 @@ function Page2() {
 
   useEffect(() => {
     if (remotestream) {
-      const videoElement = document.createElement("video");
-      videoElement.srcObject = remotestream;
-      videoElement.autoplay = true;
-      videoElement.playsInline = true;
-      videoElement.className = "w-[100vh] h-[75vh] rounded-lg shadow-lg bg-black object-cover";
-      remoteVideosContainerRef.current.appendChild(videoElement);
+    const videoElement = document.createElement("video");
+videoElement.srcObject = remotestream;
+videoElement.autoplay = true;
+videoElement.playsInline = true;
+videoElement.className =
+  "absolute inset-0 w-full h-full object-cover bg-black";
+remoteVideosContainerRef.current.appendChild(videoElement);
+
     }
   }, [remotestream]);
 

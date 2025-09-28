@@ -20,20 +20,48 @@ function Page2() {
   const [micOn, setMicOn] = useState(true);
   const [screenSharing, setScreenSharing] = useState(false);
   const [webcamStream, setWebcamStream] = useState(null);
-  const [facingMode, setFacingMode] = useState("user"); // 'user' = front, 'environment' = back
+  const [videoDevices, setVideoDevices] = useState([]);
+  const [currentDeviceIndex, setCurrentDeviceIndex] = useState(0);
 
   const localVideoRef = useRef(null);
   const remoteVideosContainerRef = useRef(null);
 
-  const getUserMedia = async () => {
+  const getUserMedia = async (deviceId = null) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const constraints = {
+        video: deviceId ? { deviceId: { exact: deviceId } } : true,
+        audio: true,
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       setStreamed(stream);
       setWebcamStream(stream);
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+
+      // Replace video track in peer connection if already connected
+      const videoTrack = stream.getVideoTracks()[0];
+      const sender = peer.getSenders().find((s) => s.track?.kind === "video");
+      if (sender) sender.replaceTrack(videoTrack);
     } catch (err) {
       console.error("Failed to get user media:", err);
     }
+  };
+
+  // Load available cameras
+  useEffect(() => {
+    navigator.mediaDevices.enumerateDevices().then((devices) => {
+      const videoInputs = devices.filter((d) => d.kind === "videoinput");
+      setVideoDevices(videoInputs);
+    });
+  }, []);
+
+  const flipCamera = async () => {
+    if (videoDevices.length <= 1) {
+      console.log("Only one camera available.");
+      return;
+    }
+    const nextIndex = (currentDeviceIndex + 1) % videoDevices.length;
+    setCurrentDeviceIndex(nextIndex);
+    await getUserMedia(videoDevices[nextIndex].deviceId);
   };
 
   const handleScreenShare = async () => {
@@ -41,7 +69,10 @@ function Page2() {
 
     if (!screenSharing) {
       try {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: true,
+        });
         const screenTrack = screenStream.getVideoTracks()[0];
 
         const sender = peer.getSenders().find((s) => s.track.kind === "video");
@@ -70,40 +101,7 @@ function Page2() {
     if (sender) sender.replaceTrack(videoTrack);
 
     if (localVideoRef.current) localVideoRef.current.srcObject = webcamStream;
-
     setScreenSharing(false);
-  };
-
-  const flipCamera = async () => {
-    if (!peer || !webcamStream) return;
-
-    const newFacing = facingMode === "user" ? "environment" : "user";
-
-    try {
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: newFacing },
-        audio: true,
-      });
-
-      const newVideoTrack = newStream.getVideoTracks()[0];
-
-      const sender = peer.getSenders().find((s) => s.track?.kind === "video");
-      if (sender) sender.replaceTrack(newVideoTrack);
-
-      // Preserve current camera/mic states
-      newVideoTrack.enabled = cameraOn;
-      newStream.getAudioTracks().forEach((track) => (track.enabled = micOn));
-
-      if (localVideoRef.current) localVideoRef.current.srcObject = newStream;
-
-      // Stop old stream
-      webcamStream.getTracks().forEach((track) => track.stop());
-
-      setWebcamStream(newStream);
-      setFacingMode(newFacing);
-    } catch (err) {
-      console.error("Failed to flip camera:", err);
-    }
   };
 
   const handleNewUserJoined = useCallback(({ emailid }) => {
@@ -156,7 +154,8 @@ function Page2() {
       videoElement.srcObject = remotestream;
       videoElement.autoplay = true;
       videoElement.playsInline = true;
-      videoElement.className = "absolute inset-0 w-full h-full object-cover bg-black";
+      videoElement.className =
+        "absolute inset-0 w-full h-full object-cover bg-black";
       remoteVideosContainerRef.current.appendChild(videoElement);
     }
   }, [remotestream]);
@@ -178,7 +177,8 @@ function Page2() {
   }, []);
 
   const handleCallButton = async () => {
-    if (!remoteUsers.length || !streamed) return alert("No remote users or local stream available");
+    if (!remoteUsers.length || !streamed)
+      return alert("No remote users or local stream available");
     const offer = await createOffer();
     sendStream(streamed);
     remoteUsers.forEach((remoteEmail) => {
@@ -201,13 +201,17 @@ function Page2() {
   const handleEndCall = () => {
     if (streamed) streamed.getTracks().forEach((track) => track.stop());
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
-    if (remoteVideosContainerRef.current) remoteVideosContainerRef.current.innerHTML = "";
+    if (remoteVideosContainerRef.current)
+      remoteVideosContainerRef.current.innerHTML = "";
     window.location.href = "/";
     setRemoteUsers([]);
   };
 
   return (
-    <div style={{ height: "100dvh" }} className="bg-black flex flex-col relative overflow-hidden">
+    <div
+      style={{ height: "100dvh" }}
+      className="bg-black flex flex-col relative overflow-hidden"
+    >
       <div className="absolute top-3 left-0 right-0 text-center z-20">
         <div className="sm:text-3xl text-[20px] font-bold text-white">Room</div>
         <h2 className="text-sm text-gray-300">
@@ -218,7 +222,10 @@ function Page2() {
       </div>
 
       <div className="flex-1 relative">
-        <div ref={remoteVideosContainerRef} className="absolute inset-0 w-full h-full bg-black" />
+        <div
+          ref={remoteVideosContainerRef}
+          className="absolute inset-0 w-full h-full bg-black"
+        ></div>
 
         <video
           ref={localVideoRef}
@@ -228,18 +235,17 @@ function Page2() {
           className="absolute bottom-4 right-4 w-[120px] h-[180px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg object-cover border-2 border-white z-30"
         />
       </div>
-
       <div className="grid place-items-center">
-        <div className="sm:p-3 flex gap-1 border-2 border-amber-50 sm:backdrop-contrast-50 backdrop-blur-md rounded-3xl sm:bg-black/10 sm:gap-6 z-20 sm:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px]">
+        <div className="sm:p-3 flex gap-1 border-2 border-amber-50 sm:backdrop-contrast-50 backdrop-blur-md rounded-3xl sm:bg-black/10 sm:gap-6 z-20 sm:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] ">
           <button
             onClick={handleCallButton}
-            className="sm:px-4 sm:py-3 text-white bg-gradient-to-b from-green-400 to-green-600"
+            className="sm:px-4 sm:py-3 text-white bg-gradient-to-b from-green-400 to-green-600 "
           >
             Connect
           </button>
           <button
             onClick={toggleCamera}
-            className="sm:px-4 sm:py-2 text-white rounded-[20px] bg-gradient-to-b from-orange-400 to-orange-600"
+            className="sm:px-4 sm:py-2 text-white rounded-[20px] bg-gradient-to-b from-orange-400 to-orange-600 "
           >
             {cameraOn ? "Cam off" : "Cam On"}
           </button>
@@ -250,16 +256,16 @@ function Page2() {
             {micOn ? "Mute" : "Unmute"}
           </button>
           <button
+            onClick={flipCamera}
+            className="sm:px-4 sm:py-2 text-white rounded-[20px] shadow bg-gradient-to-b from-blue-500 to-blue-700"
+          >
+            Flip
+          </button>
+          <button
             onClick={handleScreenShare}
             className="sm:px-4 sm:py-2 text-white rounded-[20px] shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:from-yellow-500 hover:to-yellow-700 transition"
           >
             {screenSharing ? "Stop" : "Share"}
-          </button>
-          <button
-            onClick={flipCamera}
-            className="sm:px-4 sm:py-2 text-white rounded-[20px] shadow bg-gradient-to-b from-blue-400 to-blue-600"
-          >
-            Flip Camera
           </button>
           <button
             onClick={handleEndCall}

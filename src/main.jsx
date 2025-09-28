@@ -5,6 +5,7 @@ import App from './Pages/App'
 import Page2 from './Pages/Page2'
 import SocketProvider from "./Provider/Socket.jsx"
 import PeerProvider from './Provider/Peer.jsx'
+import Chat from './Pages/Chat.jsx'
 
 const router = createBrowserRouter([
   {
@@ -13,7 +14,7 @@ const router = createBrowserRouter([
   } , {
     path : "/mainpage" ,
     element :  <Page2 />
-  }
+  } 
 ])
 
 

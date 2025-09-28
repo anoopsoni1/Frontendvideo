@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Usesocket } from "../Provider/Socket";
 import { Usepeer } from "../Provider/Peer";
+import Chat from "./Chat";
 
 function Page2() {
   const socket = Usesocket();
@@ -187,6 +188,8 @@ remoteVideosContainerRef.current.appendChild(videoElement);
   }, []);
 
   return (
+    <>
+    <Chat />
 <div style={{ height: "100dvh" }} className="bg-black flex flex-col relative overflow-hidden">
   <div className="absolute top-3 left-0 right-0 text-center z-20">
     <div className="sm:text-3xl text-[20px] font-bold text-white">
@@ -215,40 +218,41 @@ remoteVideosContainerRef.current.appendChild(videoElement);
     />
   </div>
   <div className="grid place-items-center">
- <div className="md:p-3 flex gap-[2.9px] sm:border-2 sm:border-amber-50  sm:backdrop-contrast-50 backdrop-blur-md rounded-3xl sm:bg-slate-950/50 sm:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] ">
+ <div className="md:p-3 flex gap-[2.9px] md:border-2 md:border-amber-50  md:backdrop-contrast-50 backdrop-blur-md rounded-3xl md:bg-slate-950/50 md:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center ">
     <button
       onClick={handleCallButton}
-      className="sm:px-4 sm:py-3  text-white bg-gradient-to-b from-green-400 to-green-600 "
+      className="sm:px-4 sm:py-2 text-center text-white bg-gradient-to-b from-green-400 to-green-600 "
     >
       Connect
     </button>
     <button
       onClick={toggleCamera}
-      className="sm:px-4 sm:py-3 text-white  bg-gradient-to-b from-orange-400 to-orange-600 "
+      className="sm:px-4 sm:py-2 text-center text-white  bg-gradient-to-b from-orange-400 to-orange-600 "
     >
       {cameraOn ? "Camoff" : "Cam On"}
     </button>
     <button
       onClick={toggleMic}
-      className="sm:px-4 sm:py-3 text-white  shadow bg-gradient-to-b from-pink-300 to-pink-800"
+      className="sm:px-4 sm:py-2 text-white text-center  shadow bg-gradient-to-b from-pink-300 to-pink-800"
     >
       {micOn ? "Mute" : "Unmute"}
     </button>
     <button
       onClick={handleScreenShare}
-      className="sm:px-4 sm:py-3 text-white shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:from-yellow-500 hover:to-yellow-700 transition"
+      className="sm:px-4 sm:py-2 text-white shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:from-yellow-500 hover:to-yellow-700 transition text-center"
     >
       {screenSharing ? "Stop" : "Share"}
     </button>
     <button
       onClick={handleEndCall}
-      className="sm:px-4  sm:py-3 text-white rounded-[20px] shadow bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 transition"
+      className="sm:px-4  sm:py-2 text-white rounded-[20px] shadow bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 transition text-center"
     >
       End
     </button>
   </div>
   </div>
 </div>
+</>
   );
 }
 

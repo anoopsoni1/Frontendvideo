@@ -87,7 +87,8 @@ const PeerProvider = ({ children }) => {
       remotestream,
       addIceCandidate,
       onIceCandidate,
-      localStream
+      localStream,
+      
     }}>
       {children}
     </PeerContext.Provider>

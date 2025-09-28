@@ -7,8 +7,9 @@ function Home() {
   const [email, setEmail] = useState("");
   const [roomId, setRoomId] = useState("");
 
+  localStorage.setItem("email", email) ;
+  
   const navigate = useNavigate();
-
 
   const handleJoinRoom = useCallback(() => {
     if (!email || !roomId) {
@@ -19,8 +20,7 @@ function Home() {
   }, [email, roomId, socket]);
 
   const handleRoomJoined = useCallback(
-    (roomid) => {
-      console.log("Room joined:", roomid);
+    () => {
       navigate(`/mainpage`);
     },
     [navigate]
@@ -41,7 +41,7 @@ function Home() {
       <div className="flex flex-col gap-4 w-80">
         <input
           type="email"
-          placeholder="Enter your email"
+          placeholder="Enter your Name"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="p-3 border text-white border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:outline-none"
@@ -68,6 +68,6 @@ function Home() {
   );
 }
 
-export default Home;
+export default Home  ;
 
 

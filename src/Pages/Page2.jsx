@@ -14,6 +14,8 @@ function Page2() {
     addIceCandidate,
   } = Usepeer();
 
+  const userId = localStorage.getItem("email"); 
+
   const [streamed, setStreamed] = useState(null);
   const [remoteUsers, setRemoteUsers] = useState([]);
   const [cameraOn, setCameraOn] = useState(true);
@@ -28,8 +30,6 @@ function Page2() {
 
   const localVideoRef = useRef(null);
   const remoteVideosContainerRef = useRef(null);
-
-  let userId = null; 
 
   const getUserMedia = async () => {
     try {
@@ -161,7 +161,6 @@ function Page2() {
     sendStream(streamed);
     remoteUsers.forEach((remoteEmail) => {
       socket.emit("call-user", { emailid: remoteEmail, offer });
-         userId = {remoteEmail}
     });
   };
 
@@ -216,7 +215,7 @@ function Page2() {
       </div>
 
       <div className="grid place-items-center">
-        <div className="md:p-3 flex gap-[2.9px] md:border-2 md:border-amber-50  md:backdrop-contrast-50 backdrop-blur-md rounded-3xl md:bg-slate-950/50 md:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center ">
+        <div className="md:p-3 absolute bottom-3 flex gap-[2.9px] md:border-2 md:border-amber-50  md:backdrop-contrast-50 backdrop-blur-md rounded-3xl md:bg-slate-950/50 md:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center ">
           <button
             onClick={handleCallButton}
             className="sm:px-4 sm:py-2 rounded-lg text-white hover:bg-gray-600 "

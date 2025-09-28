@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Usesocket } from "../Provider/Socket";
 import { Usepeer } from "../Provider/Peer";
-import Chat from "./Chat";
 
 function Page2() {
   const socket = Usesocket();
@@ -22,43 +21,41 @@ function Page2() {
   const [screenSharing, setScreenSharing] = useState(false);
   const [webcamStream, setWebcamStream] = useState(null);
 
+  // Chat state
+  const [messages, setMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+
   const localVideoRef = useRef(null);
   const remoteVideosContainerRef = useRef(null);
 
   const getUserMedia = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true
-       });
-        setStreamed(stream);
-       setWebcamStream(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setStreamed(stream);
+      setWebcamStream(stream);
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
     } catch (err) {
       console.error("Failed to get user media:", err);
     }
   };
+
   const handleScreenShare = async () => {
     if (!navigator.mediaDevices.getDisplayMedia) {
-    alert("Your browser does not support screen sharing."); return
-     }
+      alert("Your browser does not support screen sharing.");
+      return;
+    }
     if (!peer) return;
 
     if (!screenSharing) {
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
         const screenTrack = screenStream.getVideoTracks()[0];
-      
-       
-        const sender = peer.getSenders().find(s => s.track.kind === "video");
+        const sender = peer.getSenders().find((s) => s.track.kind === "video");
         if (sender) sender.replaceTrack(screenTrack);
 
-       
         if (localVideoRef.current) localVideoRef.current.srcObject = screenStream;
 
-       
-        screenTrack.onended = () => {
-          stopScreenShare();
-        };
-
+        screenTrack.onended = () => stopScreenShare();
         setScreenSharing(true);
       } catch (err) {
         console.error("Screen sharing failed:", err);
@@ -72,12 +69,10 @@ function Page2() {
     if (!peer || !webcamStream) return;
 
     const videoTrack = webcamStream.getVideoTracks()[0];
-    const sender = peer.getSenders().find(s => s.track.kind === "video");
+    const sender = peer.getSenders().find((s) => s.track.kind === "video");
     if (sender) sender.replaceTrack(videoTrack);
 
-   
     if (localVideoRef.current) localVideoRef.current.srcObject = webcamStream;
-
     setScreenSharing(false);
   };
 
@@ -127,14 +122,12 @@ function Page2() {
 
   useEffect(() => {
     if (remotestream) {
-    const videoElement = document.createElement("video");
-videoElement.srcObject = remotestream;
-videoElement.autoplay = true;
-videoElement.playsInline = true;
-videoElement.className =
-  "absolute inset-0 w-full h-full object-cover bg-black";
-remoteVideosContainerRef.current.appendChild(videoElement);
-
+      const videoElement = document.createElement("video");
+      videoElement.srcObject = remotestream;
+      videoElement.autoplay = true;
+      videoElement.playsInline = true;
+      videoElement.className = "absolute inset-0 w-full h-full object-cover bg-black";
+      remoteVideosContainerRef.current.appendChild(videoElement);
     }
   }, [remotestream]);
 
@@ -143,10 +136,16 @@ remoteVideosContainerRef.current.appendChild(videoElement);
     socket.on("incoming-call", handleIncomingCall);
     socket.on("Call-accepted", handleCallAccepted);
 
+    // Chat listener
+    socket.on("chat-message", ({ message }) => {
+      setMessages((prev) => [...prev, { self: false, message }]);
+    });
+
     return () => {
       socket.off("user-joined", handleNewUserJoined);
       socket.off("incoming-call", handleIncomingCall);
       socket.off("Call-accepted", handleCallAccepted);
+      socket.off("chat-message");
     };
   }, [socket, handleNewUserJoined, handleIncomingCall, handleCallAccepted]);
 
@@ -179,82 +178,109 @@ remoteVideosContainerRef.current.appendChild(videoElement);
     if (streamed) streamed.getTracks().forEach((track) => track.stop());
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideosContainerRef.current) remoteVideosContainerRef.current.innerHTML = "";
-      window.location.href = "/"
-     setRemoteUsers([]);
+    window.location.href = "/";
+    setRemoteUsers([]);
+    setMessages([]);
   };
 
-  useEffect(() => {
-    getUserMedia();
-  }, []);
+  // Chat send function
+  const sendMessage = () => {
+    if (!chatInput.trim()) return;
+    socket.emit("chat-message", { message: chatInput });
+    setMessages((prev) => [...prev, { self: true, message: chatInput }]);
+    setChatInput("");
+  };
 
   return (
-    <>
-    
-<div style={{ height: "100dvh" }} className="bg-black flex flex-col relative overflow-hidden">
-  <div className="absolute top-3 left-0 right-0 text-center z-20">
-    <div className="sm:text-3xl text-[20px] font-bold text-white">
-      Room
-    </div>
-    <h2 className="text-sm text-gray-300">
-      {remoteUsers.length > 0
-        ? `Connected to: ${remoteUsers.join(", ")}`
-        : "Waiting for users..."}
-    </h2>
-  </div>
-<div>
-  <Chat />
-</div>
+    <div style={{ height: "100dvh" }} className="bg-black flex flex-col relative overflow-hidden">
+      {/* Header */}
+      <div className="absolute top-3 left-0 right-0 text-center z-20">
+        <div className="sm:text-3xl text-[20px] font-bold text-white">Room</div>
+        <h2 className="text-sm text-gray-300">
+          {remoteUsers.length > 0 ? `Connected to: ${remoteUsers.join(", ")}` : "Waiting for users..."}
+        </h2>
+      </div>
 
-  <div className="flex-1 relative">
-    <div
-      ref={remoteVideosContainerRef}
-      className="absolute inset-0 w-full h-full bg-black"
-    >
+      {/* Video section */}
+      <div className="flex-1 relative">
+        <div ref={remoteVideosContainerRef} className="absolute inset-0 w-full h-full bg-black"></div>
+        <video
+          ref={localVideoRef}
+          autoPlay
+          muted
+          playsInline
+          className="absolute bottom-4 right-4 w-[120px] h-[180px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg object-cover border-2 border-white z-30"
+        />
+      </div>
+
+      {/* Control buttons */}
+      <div className="grid place-items-center">
+        <div className="md:p-3 flex gap-[2.9px] md:border-2 md:border-amber-50  md:backdrop-contrast-50 backdrop-blur-md rounded-3xl md:bg-slate-950/50 md:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center ">
+          <button
+            onClick={handleCallButton}
+            className="sm:px-4 sm:py-2 text-center text-white bg-gradient-to-b from-green-400 to-green-600 "
+          >
+            Connect
+          </button>
+          <button
+            onClick={toggleCamera}
+            className="sm:px-4 sm:py-2 text-center text-white  bg-gradient-to-b from-orange-400 to-orange-600 "
+          >
+            {cameraOn ? "Camoff" : "Cam On"}
+          </button>
+          <button
+            onClick={toggleMic}
+            className="sm:px-4 sm:py-2 text-white text-center  shadow bg-gradient-to-b from-pink-300 to-pink-800"
+          >
+            {micOn ? "Mute" : "Unmute"}
+          </button>
+          <button
+            onClick={handleScreenShare}
+            className="sm:px-4 sm:py-2 text-white shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:from-yellow-500 hover:to-yellow-700 transition text-center"
+          >
+            {screenSharing ? "Stop" : "Share"}
+          </button>
+          <button
+            onClick={handleEndCall}
+            className="sm:px-4  sm:py-2 text-white rounded-[20px] shadow bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 transition text-center"
+          >
+            End
+          </button>
+        </div>
+      </div>
+
+      {/* Chat Panel */}
+      <div className="absolute right-0 bottom-0 w-full sm:w-1/4 h-1/2 bg-black/80 backdrop-blur-md flex flex-col p-2 gap-2 overflow-hidden rounded-tl-xl z-40">
+        <div className="flex-1 overflow-y-auto space-y-1">
+          {messages.map((msg, index) => (
+            <div
+              key={index}
+              className={`p-2 rounded-md text-white ${
+                msg.self ? "bg-blue-500 self-end" : "bg-gray-700 self-start"
+              }`}
+            >
+              {msg.message}
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-1 mt-2">
+          <input
+            type="text"
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder="Type a message..."
+            className="flex-1 p-2 rounded-md bg-gray-900 text-white"
+            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          />
+          <button
+            onClick={sendMessage}
+            className="px-3 py-2 bg-green-600 rounded-md text-white"
+          >
+            Send
+          </button>
+        </div>
+      </div>
     </div>
-    <video
-      ref={localVideoRef}
-      autoPlay
-      muted
-      playsInline
-      className="absolute bottom-4  right-4 w-[120px] h-[180px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg object-cover border-2 border-white z-30"
-    />
-  </div>
-  <div className="grid place-items-center">
- <div className="md:p-3 flex gap-[2.9px] md:border-2 md:border-amber-50  md:backdrop-contrast-50 backdrop-blur-md rounded-3xl md:bg-slate-950/50 md:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center ">
-    <button
-      onClick={handleCallButton}
-      className="sm:px-4 sm:py-2 text-center text-white bg-gradient-to-b from-green-400 to-green-600 "
-    >
-      Connect
-    </button>
-    <button
-      onClick={toggleCamera}
-      className="sm:px-4 sm:py-2 text-center text-white  bg-gradient-to-b from-orange-400 to-orange-600 "
-    >
-      {cameraOn ? "Camoff" : "Cam On"}
-    </button>
-    <button
-      onClick={toggleMic}
-      className="sm:px-4 sm:py-2 text-white text-center  shadow bg-gradient-to-b from-pink-300 to-pink-800"
-    >
-      {micOn ? "Mute" : "Unmute"}
-    </button>
-    <button
-      onClick={handleScreenShare}
-      className="sm:px-4 sm:py-2 text-white shadow bg-gradient-to-b from-yellow-600 to-yellow-800 hover:from-yellow-500 hover:to-yellow-700 transition text-center"
-    >
-      {screenSharing ? "Stop" : "Share"}
-    </button>
-    <button
-      onClick={handleEndCall}
-      className="sm:px-4  sm:py-2 text-white rounded-[20px] shadow bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 transition text-center"
-    >
-      End
-    </button>
-  </div>
-  </div>
-</div>
-</>
   );
 }
 

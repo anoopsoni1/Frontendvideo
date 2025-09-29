@@ -215,7 +215,7 @@ function Page2() {
       </div>
 
       <div className="grid place-items-center">
-        <div className="md:p-3 sm:absolute sm:bottom-3 flex gap-[2.9px] md:border-2 md:border-amber-50  md:backdrop-contrast-50 backdrop-blur-md rounded-3xl md:bg-slate-950/50 md:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center ">
+        <div className="md:p-3 sm:absolute absolute sm:bottom-3 flex gap-[2.9px] md:border-2 md:border-amber-50  md:backdrop-contrast-50 backdrop-blur-md rounded-3xl md:bg-slate-950/50 md:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center ">
           <button
             onClick={handleCallButton}
             className="sm:px-4 sm:py-2 rounded-lg text-white hover:bg-gray-600 "

@@ -1,7 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Usesocket } from "../Provider/Socket";
 import { Usepeer } from "../Provider/Peer";
-
+import { Sun, Moon } from "lucide-react"; 
+import { PiVideoCameraDuotone } from "react-icons/pi";
+import { PiVideoCameraSlashDuotone } from "react-icons/pi";
+import { MdCastConnected } from "react-icons/md";
+import { IoVolumeMute } from "react-icons/io5";
+import { VscUnmute } from "react-icons/vsc";
+import { MdScreenShare } from "react-icons/md";
+import { MdOutlineStopScreenShare } from "react-icons/md";
+import { MdCallEnd } from "react-icons/md";
 function Page2() {
   const socket = Usesocket();
   const {
@@ -14,8 +22,6 @@ function Page2() {
     addIceCandidate,
   } = Usepeer();
 
-  const userId = localStorage.getItem("email"); 
-
   const [streamed, setStreamed] = useState(null);
   const [remoteUsers, setRemoteUsers] = useState([]);
   const [cameraOn, setCameraOn] = useState(true);
@@ -23,13 +29,22 @@ function Page2() {
   const [screenSharing, setScreenSharing] = useState(false);
   const [webcamStream, setWebcamStream] = useState(null);
 
-
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
-  const [chatVisible, setChatVisible] = useState(false); 
+  const [chatVisible, setChatVisible] = useState(false);
+
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
 
   const localVideoRef = useRef(null);
   const remoteVideosContainerRef = useRef(null);
+
+  const userId = localStorage.getItem("email");
+
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+  };
 
   const getUserMedia = async () => {
     try {
@@ -109,7 +124,6 @@ function Page2() {
         });
       }
     });
-
     socket.on("ice-candidate", async ({ candidate }) => {
       try {
         await addIceCandidate(candidate);
@@ -117,7 +131,6 @@ function Page2() {
         console.error("Failed to add ICE candidate:", err);
       }
     });
-
     return () => {
       socket.off("ice-candidate");
     };
@@ -129,7 +142,7 @@ function Page2() {
       videoElement.srcObject = remotestream;
       videoElement.autoplay = true;
       videoElement.playsInline = true;
-      videoElement.className = "absolute inset-0 w-full h-full object-cover bg-black ";
+      videoElement.className = "absolute inset-0 w-full h-full object-cover bg-black -scale-x-100";
       remoteVideosContainerRef.current.appendChild(videoElement);
     }
   }, [remotestream]);
@@ -138,11 +151,9 @@ function Page2() {
     socket.on("user-joined", handleNewUserJoined);
     socket.on("incoming-call", handleIncomingCall);
     socket.on("Call-accepted", handleCallAccepted);
-
     socket.on("chat-message", ({ message, from }) => {
       setMessages((prev) => [...prev, { self: false, message, from }]);
     });
-
     return () => {
       socket.off("user-joined", handleNewUserJoined);
       socket.off("incoming-call", handleIncomingCall);
@@ -195,69 +206,73 @@ function Page2() {
   const toggleChat = () => setChatVisible((prev) => !prev);
 
   return (
-    <div style={{ height: "100dvh" }} className="bg-black flex flex-col relative overflow-hidden">
+    <div
+      style={{ height: "100dvh" }}
+      className={`${theme === "dark" ? "bg-black text-white" : "bg-white text-black"} flex flex-col relative overflow-hidden`}
+    >
+     
+      <button
+        onClick={toggleTheme}
+        className="absolute top-3 right-3 z-50 p-2 rounded-full bg-gray-700/70 hover:bg-gray-500 text-white"
+      >
+        {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+      </button>
+
+      
       <div className="absolute top-3 left-0 right-0 text-center z-20">
-        <div className="sm:text-3xl text-[20px] font-bold text-white">Room</div>
-        <h2 className="text-sm text-gray-300">
+        <div className="sm:text-3xl text-[20px] font-bold">{theme === "dark" ? "Room" : "Room"}</div>
+        <h2 className="text-sm opacity-70">
           {remoteUsers.length > 0 ? `Connected to: ${remoteUsers.join(", ")}` : "Waiting for users..."}
         </h2>
       </div>
 
       <div className="flex-1 relative">
-        <div ref={remoteVideosContainerRef} className="absolute inset-0 w-full h-full bg-black"></div>
+        <div ref={remoteVideosContainerRef} className="absolute inset-0 w-full h-full"></div>
         <video
           ref={localVideoRef}
           autoPlay
           muted
           playsInline
-          className="absolute bottom-4 left-4 w-[120px] h-[180px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg object-cover border-2 border-white z-30"
+          className="absolute bottom-4 left-4 w-[100px] -scale-x-100 h-[150px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg object-cover border-2 border-white z-30"
         />
       </div>
 
       <div className="grid place-items-center">
-        <div className="md:p-3 sm:absolute sm:bottom-3 flex gap-[2.9px] md:border-2 md:border-amber-50  md:backdrop-contrast-50 backdrop-blur-md rounded-3xl md:bg-slate-950/50 md:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center ">
-          <button
-            onClick={handleCallButton}
-            className="sm:px-4 sm:py-2 rounded-lg text-white hover:bg-gray-600 "
-          >
-            Connect
+        <div
+          className={`md:p-3 flex gap-1 md:border-2 rounded-3xl md:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center 
+          ${theme === "dark" ? "md:bg-slate-950/50 md:border-amber-50 text-white" : " text-white md:bg-gray-200 md:border-gray-400"}`}
+        >
+          <button onClick={handleCallButton} className="px-3 py-1 rounded-lg hover:bg-gray-600">
+          <MdCastConnected size={20}/>
           </button>
-          <button
-            onClick={toggleCamera}
-            className="sm:px-4 sm:py-2 rounded-lg text-white hover:bg-gray-600 "
-          >
-            {cameraOn ? "Camoff" : "Cam On"}
+          <button onClick={toggleCamera} className="px-3 py-1 rounded-lg hover:bg-gray-600">
+            {cameraOn ? <PiVideoCameraDuotone size={20} />: <PiVideoCameraSlashDuotone size={20} />}
           </button>
-          <button
-            onClick={toggleMic}
-            className="sm:px-4 sm:py-2 text-center  shadow rounded-lg text-white hover:bg-gray-600"
-          >
-            {micOn ? "Mute" : "Unmute"}
+          <button onClick={toggleMic} className="px-3 py-1 rounded-lg hover:bg-gray-600">
+            {micOn ? <VscUnmute size={20} /> : <IoVolumeMute size={20}/>}
           </button>
-          <button
-            onClick={handleScreenShare}
-            className="sm:px-4 sm:py-2 rounded-lg text-white hover:bg-gray-600"
-          >
-            {screenSharing ? "Stop" : "Share"}
+          <button onClick={handleScreenShare} className="px-3 py-1 rounded-lg hover:bg-gray-600">
+            {screenSharing ? <MdOutlineStopScreenShare  size={20}/>: <MdScreenShare  size={20}/>}
           </button>
-          <button
-            onClick={handleEndCall}
-            className="sm:px-4  sm:py-2 rounded-lg text-white hover:bg-gray-600"
-          >
-            End
+          <button onClick={handleEndCall} className="px-3 py-1 rounded-lg hover:bg-gray-600">
+            <MdCallEnd size={20} color="red" />
           </button>
         </div>
       </div>
 
+     
       <button
         onClick={toggleChat}
         className="absolute right-2 top-1/2 transform -translate-y-1/2 z-50 bg-green-600 text-white px-3 py-2 rounded-l-full shadow-lg"
       >
-        {chatVisible ? "Close Chat" : "Open Chat"}
+        {/* {chatVisible ? "Close Chat" : "Open Chat"} */}
       </button>
 
+      
       <div
-        className={`absolute right-0 bottom-0 w-full sm:w-[50vh] h-1/2 bg-black/80 backdrop-blur-md flex flex-col p-2 gap-2 overflow-hidden rounded-tl-xl z-40 transition-transform duration-300 ${
+        className={`absolute right-0 bottom-0 w-full sm:w-[50vh] h-1/2 ${
+          theme === "dark" ? "bg-black/80" : "bg-gray-100/90 text-black"
+        } backdrop-blur-md flex flex-col p-2 gap-2 overflow-hidden rounded-tl-xl z-40 transition-transform duration-300 ${
           chatVisible ? "-translate-x-1" : "translate-x-full"
         }`}
       >
@@ -265,11 +280,9 @@ function Page2() {
           {messages.map((msg, index) => (
             <div
               key={index}
-              className={`p-2 rounded-md text-white ${
-                msg.self ? "bg-blue-500 self-end" : "bg-gray-700 self-start"
-              }`}
+              className={`p-2 rounded-md ${msg.self ? "bg-blue-500 self-end text-white" : "bg-gray-700 text-white self-start"}`}
             >
-              {!msg.self && <div className="text-xs text-gray-300 mb-1">{msg.from}</div>}
+              {!msg.self && <div className="text-xs opacity-70 mb-1">{msg.from}</div>}
               {msg.message}
             </div>
           ))}
@@ -280,13 +293,12 @@ function Page2() {
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 p-2 rounded-md bg-gray-900 text-white"
+            className={`flex-1 p-2 rounded-md ${
+              theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-black border"
+            }`}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           />
-          <button
-            onClick={sendMessage}
-            className="px-3 py-2 bg-green-600 rounded-md text-white"
-          >
+          <button onClick={sendMessage} className="px-3 py-2 bg-green-600 rounded-md text-white">
             Send
           </button>
         </div>

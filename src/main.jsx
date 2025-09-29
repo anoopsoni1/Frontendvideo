@@ -5,23 +5,39 @@ import App from './Pages/App'
 import Page2 from './Pages/Page2'
 import SocketProvider from "./Provider/Socket.jsx"
 import PeerProvider from './Provider/Peer.jsx'
-import Chat from './Pages/Chat.jsx'
-
+import LandingPage from './Components/Home.jsx'
+import { ThemeProvider } from './Provider/ThemeProvider.jsx'
+import {ChatPage} from "../src/Components/page.jsx"
 const router = createBrowserRouter([
   {
-    path: "/" ,
+    path: "/roompage" ,
     element: <App /> ,
   } , {
     path : "/mainpage" ,
     element :  <Page2 />
-  } 
+  }  ,
+  {
+    path : "/" , 
+    element : <LandingPage />
+  }
+  ,
+  {
+    path : "/page" , 
+    element : <ChatPage />
+  }
 ])
 
 
 createRoot(document.getElementById('root')).render(
+  <ThemeProvider>
     <SocketProvider>
       <PeerProvider>
     <RouterProvider router={router} />
     </PeerProvider>
     </SocketProvider>
+     </ThemeProvider>
 )
+
+  
+   
+   

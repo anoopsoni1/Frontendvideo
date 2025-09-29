@@ -237,6 +237,7 @@ function Page2() {
         />
       </div>
 
+      {/* Controls */}
       <div className="grid place-items-center">
         <div
           className={`md:p-3 flex gap-1 md:border-2 rounded-3xl md:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center 

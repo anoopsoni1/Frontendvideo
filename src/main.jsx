@@ -7,7 +7,6 @@ import SocketProvider from "./Provider/Socket.jsx"
 import PeerProvider from './Provider/Peer.jsx'
 import LandingPage from './Components/Home.jsx'
 import { ThemeProvider } from './Provider/ThemeProvider.jsx'
-import {ChatPage} from "../src/Components/page.jsx"
 const router = createBrowserRouter([
   {
     path: "/roompage" ,
@@ -20,11 +19,7 @@ const router = createBrowserRouter([
     path : "/" , 
     element : <LandingPage />
   }
-  ,
-  {
-    path : "/page" , 
-    element : <ChatPage />
-  }
+  
 ])
 
 

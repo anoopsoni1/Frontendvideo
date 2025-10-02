@@ -6,7 +6,6 @@ import Page2 from './Pages/Page2'
 import SocketProvider from "./Provider/Socket.jsx"
 import PeerProvider from './Provider/Peer.jsx'
 import LandingPage from './Components/Home.jsx'
-import { ThemeProvider } from './Provider/ThemeProvider.jsx'
 const router = createBrowserRouter([
   {
     path: "/roompage" ,
@@ -24,15 +23,11 @@ const router = createBrowserRouter([
 
 
 createRoot(document.getElementById('root')).render(
-  <ThemeProvider>
     <SocketProvider>
       <PeerProvider>
     <RouterProvider router={router} />
     </PeerProvider>
     </SocketProvider>
-     </ThemeProvider>
 )
 
   
-   
-   

@@ -29,9 +29,10 @@ function Page2() {
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+
   const userId = localStorage.getItem("email");
 
-  // Draggable small video position
+  // Draggable small video
   const [dragPos, setDragPos] = useState({ top: 16, left: 16 });
   const dragRef = useRef(null);
   const offset = useRef({ x: 0, y: 0 });
@@ -224,7 +225,7 @@ function Page2() {
 
   const toggleChat = () => setChatVisible((prev) => !prev);
 
-  // Drag handlers
+  // Drag & boundary handlers
   const handleMouseDown = (e) => {
     isDragging.current = true;
     offset.current = {
@@ -235,9 +236,11 @@ function Page2() {
 
   const handleMouseMove = (e) => {
     if (!isDragging.current) return;
+    const newLeft = e.clientX - offset.current.x;
+    const newTop = e.clientY - offset.current.y;
     setDragPos({
-      left: e.clientX - offset.current.x,
-      top: e.clientY - offset.current.y,
+      left: Math.max(0, Math.min(newLeft, window.innerWidth - dragRef.current.offsetWidth)),
+      top: Math.max(0, Math.min(newTop, window.innerHeight - dragRef.current.offsetHeight)),
     });
   };
 
@@ -245,23 +248,50 @@ function Page2() {
     isDragging.current = false;
   };
 
+  const handleTouchStart = (e) => {
+    isDragging.current = true;
+    const touch = e.touches[0];
+    offset.current = {
+      x: touch.clientX - dragPos.left,
+      y: touch.clientY - dragPos.top,
+    };
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging.current) return;
+    const touch = e.touches[0];
+    const newLeft = touch.clientX - offset.current.x;
+    const newTop = touch.clientY - offset.current.y;
+    setDragPos({
+      left: Math.max(0, Math.min(newLeft, window.innerWidth - dragRef.current.offsetWidth)),
+      top: Math.max(0, Math.min(newTop, window.innerHeight - dragRef.current.offsetHeight)),
+    });
+  };
+
+  const handleTouchEnd = () => {
+    isDragging.current = false;
+  };
+
   useEffect(() => {
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("touchmove", handleTouchMove);
+    window.addEventListener("touchend", handleTouchEnd);
+
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
     };
   }, []);
 
-  // Swap local and remote streams
+  // Swap streams
   const handleSwapVideos = () => {
     if (!localVideoRef.current || !remoteVideoRef.current) return;
-
     const tempStream = localVideoRef.current.srcObject;
     localVideoRef.current.srcObject = remoteVideoRef.current.srcObject;
     remoteVideoRef.current.srcObject = tempStream;
-
     setIsLocalBig((prev) => !prev);
   };
 
@@ -298,8 +328,9 @@ function Page2() {
         <div
           ref={dragRef}
           onMouseDown={handleMouseDown}
-          onClick={handleSwapVideos} // <-- Fixed swap here
-          className="absolute w-[120px] h-[180px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg border-2 border-white cursor-pointer overflow-hidden"
+          onTouchStart={handleTouchStart}
+          onClick={handleSwapVideos}
+          className="absolute w-[120px] h-[180px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg border-2 border-white cursor-pointer overflow-hidden z-30"
           style={{ top: dragPos.top, left: dragPos.left }}
         >
           {isLocalBig ? (

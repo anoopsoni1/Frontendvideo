@@ -20,7 +20,11 @@ function Page2() {
   } = Usepeer();
 
   const [streamed, setStreamed] = useState(null);
-  const [remoteUsers, setRemoteUsers] = useState([]);
+  const [remoteUsers, setRemoteUsers] = useState(() => {
+    // Restore previous users if refresh happens
+    const saved = localStorage.getItem("remoteUsers");
+    return saved ? JSON.parse(saved) : [];
+  });
   const [cameraOn, setCameraOn] = useState(true);
   const [micOn, setMicOn] = useState(true);
   const [screenSharing, setScreenSharing] = useState(false);
@@ -43,9 +47,21 @@ function Page2() {
     localStorage.setItem("theme", newTheme);
   };
 
+  // ✅ Enhance video quality + audio quality
   const getUserMedia = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 },
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
       setStreamed(stream);
       setWebcamStream(stream);
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
@@ -92,14 +108,22 @@ function Page2() {
   };
 
   const handleNewUserJoined = useCallback(({ emailid }) => {
-    setRemoteUsers((prev) => [...new Set([...prev, emailid])]);
+    setRemoteUsers((prev) => {
+      const updated = [...new Set([...prev, emailid])];
+      localStorage.setItem("remoteUsers", JSON.stringify(updated));
+      return updated;
+    });
   }, []);
 
   const handleIncomingCall = useCallback(
     async ({ from, offer }) => {
       const answer = await createAnswer(offer);
       socket.emit("Call-accepted", { emailid: from, answer });
-      setRemoteUsers((prev) => [...new Set([...prev, from])]);
+      setRemoteUsers((prev) => {
+        const updated = [...new Set([...prev, from])];
+        localStorage.setItem("remoteUsers", JSON.stringify(updated));
+        return updated;
+      });
       if (streamed) sendStream(streamed);
     },
     [createAnswer, socket, streamed, sendStream]
@@ -113,6 +137,7 @@ function Page2() {
     [setRemoteDescription, streamed, sendStream]
   );
 
+  // ✅ Persist ICE + reconnect
   useEffect(() => {
     peer.addEventListener("icecandidate", (event) => {
       if (event.candidate) {
@@ -163,34 +188,18 @@ function Page2() {
     getUserMedia();
   }, []);
 
-  // ✅ NEW: Save call state before refresh
+  // ✅ Auto-reconnect after refresh if remote users exist
   useEffect(() => {
-    const saveState = () => {
-      if (remoteUsers.length > 0) {
-        localStorage.setItem("inCall", "true");
-        localStorage.setItem("roomUsers", JSON.stringify(remoteUsers));
-      }
-    };
-    window.addEventListener("beforeunload", saveState);
-    return () => window.removeEventListener("beforeunload", saveState);
-  }, [remoteUsers]);
-
-  // ✅ NEW: Restore call after refresh
-  useEffect(() => {
-    const inCall = localStorage.getItem("inCall");
-    const savedUsers = JSON.parse(localStorage.getItem("roomUsers") || "[]");
-
-    if (inCall && savedUsers.length > 0 && streamed) {
-      setRemoteUsers(savedUsers);
+    if (remoteUsers.length > 0 && streamed) {
       (async () => {
         const offer = await createOffer();
         sendStream(streamed);
-        savedUsers.forEach((remoteEmail) => {
+        remoteUsers.forEach((remoteEmail) => {
           socket.emit("call-user", { emailid: remoteEmail, offer });
         });
       })();
     }
-  }, [createOffer, sendStream, socket, streamed]);
+  }, [remoteUsers, streamed, createOffer, sendStream, socket]);
 
   const handleCallButton = async () => {
     if (!remoteUsers.length || !streamed) return alert("No remote users or local stream available");
@@ -218,13 +227,12 @@ function Page2() {
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideosContainerRef.current) remoteVideosContainerRef.current.innerHTML = "";
 
-    // ✅ NEW: Clear session only on end call
-    localStorage.removeItem("inCall");
-    localStorage.removeItem("roomUsers");
+    // Clear saved state so refresh won't reconnect
+    localStorage.removeItem("remoteUsers");
 
+    window.location.href = "/";
     setRemoteUsers([]);
     setMessages([]);
-    window.location.href = "/";
   };
 
   const sendMessage = () => {
@@ -257,7 +265,7 @@ function Page2() {
         </h2>
       </div>
 
-      {/* Video Area */}
+      {/* Video section */}
       <div className="flex-1 relative">
         <div ref={remoteVideosContainerRef} className="absolute inset-0 w-full h-full"></div>
         <video
@@ -269,7 +277,7 @@ function Page2() {
         />
       </div>
 
-      {/* Control buttons */}
+      {/* Controls */}
       <div className="grid place-items-center">
         <div
           className={`md:p-3 flex gap-1 md:border-2 rounded-3xl md:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center 
@@ -285,7 +293,7 @@ function Page2() {
             {micOn ? <VscUnmute size={20} /> : <IoVolumeMute size={20}/>}
           </button>
           <button onClick={handleScreenShare} className="px-3 py-1 rounded-lg hover:bg-gray-600">
-            {screenSharing ? <MdOutlineStopScreenShare size={20}/>: <MdScreenShare size={20}/>}
+            {screenSharing ? <MdOutlineStopScreenShare  size={20}/>: <MdScreenShare  size={20}/>}
           </button>
           <button onClick={handleEndCall} className="px-3 py-1 rounded-lg hover:bg-gray-600">
             <MdCallEnd size={20} color="red" />
@@ -293,13 +301,13 @@ function Page2() {
         </div>
       </div>
 
-      {/* Chat toggle button */}
+      {/* Chat */}
       <button
         onClick={toggleChat}
         className="absolute right-2 top-1/2 transform -translate-y-1/2 z-50 bg-green-600 text-white px-3 py-2 rounded-l-full shadow-lg"
-      ></button>
+      >
+      </button>
 
-      {/* Chat Box */}
       <div
         className={`absolute right-0 bottom-0 w-full sm:w-[50vh] h-1/2 ${
           theme === "dark" ? "bg-black/80" : "bg-gray-100/90 text-black"

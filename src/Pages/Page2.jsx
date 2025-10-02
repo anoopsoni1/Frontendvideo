@@ -1,447 +1,303 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Usesocket } from "../Provider/Socket";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Usepeer } from "../Provider/Peer";
+import { Usesocket } from "../Provider/Socket";
+import { FaVideo, FaMicrophone, FaDesktop } from "react-icons/fa";
+import { BsFillRecordCircleFill } from "react-icons/bs";
+import { MdOutlineCallEnd } from "react-icons/md";
+import { LuMessageSquare } from "react-icons/lu";
+import Draggable from "react-draggable";
+import ChatBox from "../Components/ChatBox";
 import { Sun, Moon } from "lucide-react";
-import { PiVideoCameraDuotone, PiVideoCameraSlashDuotone } from "react-icons/pi";
-import { MdCastConnected, MdScreenShare, MdOutlineStopScreenShare, MdCallEnd } from "react-icons/md";
-import { IoVolumeMute } from "react-icons/io5";
-import { VscUnmute } from "react-icons/vsc";
- import { BsRecordBtn } from "react-icons/bs";
- import { IoChatbubbleSharp } from "react-icons/io5";
- import { PiChatCircleSlashFill } from "react-icons/pi";
 
 function Page2() {
   const socket = Usesocket();
-  const { peer, createOffer, createAnswer, setRemoteDescription, sendStream, remotestream, addIceCandidate } = Usepeer();
+  const {
+    peer,
+    createOffer,
+    createAnswer,
+    setRemoteDescription,
+    sendStream,
+    remotestream,
+  } = Usepeer();
 
   const [streamed, setStreamed] = useState(null);
-  const [remoteUsers, setRemoteUsers] = useState(() => {
-    const saved = localStorage.getItem("remoteUsers");
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [cameraOn, setCameraOn] = useState(true);
-  const [micOn, setMicOn] = useState(true);
-  const [screenSharing, setScreenSharing] = useState(false);
-  const [webcamStream, setWebcamStream] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [chatInput, setChatInput] = useState("");
-  const [chatVisible, setChatVisible] = useState(false);
-  const [theme, setTheme] = useState("dark");
+  const [remoteUsers, setRemoteUsers] = useState(
+    JSON.parse(localStorage.getItem("remoteUsers")) || []
+  );
+  const [email, setEmail] = useState(localStorage.getItem("email"));
 
-  const [isLocalBig, setIsLocalBig] = useState(true);
-
-  const localVideoRef = useRef(null);
+  const videoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const connectionRef = useRef(null);
 
-  const userId = localStorage.getItem("email");
-
-  const [mediaRecorder, setMediaRecorder] = useState(null);
-  const [recordedChunks, setRecordedChunks] = useState([]);
+  const [isMicOn, setIsMicOn] = useState(true);
+  const [isCameraOn, setIsCameraOn] = useState(true);
+  const [isSharing, setIsSharing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [recorder, setRecorder] = useState(null);
+  const [recordedChunks, setRecordedChunks] = useState([]);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isMyVideoLarge, setIsMyVideoLarge] = useState(true);
 
-
-  const [dragPos, setDragPos] = useState({ top: 480, left: 10 });
-  const dragRef = useRef(null);
-  const offset = useRef({ x: 0, y: 0 });
-  const isDragging = useRef(false);
-
-  const toggleTheme = () => {
-    const newTheme = theme === "dark" ? "light" : "dark";
-    setTheme(newTheme);
-  };
-
-  const getUserMedia = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 , max : 100} },
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      });
-      setStreamed(stream);
-      setWebcamStream(stream);
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-    } catch (err) {
-      console.error("Failed to get user media:", err);
-    }
-  };
-
-  const handleScreenShare = async () => {
-    if (!navigator.mediaDevices.getDisplayMedia) {
-      alert("Your browser does not support screen sharing.");
-      return;
-    }
-    if (!peer) return;
-
-    if (!screenSharing) {
-      try {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-        const screenTrack = screenStream.getVideoTracks()[0];
-        const sender = peer.getSenders().find((s) => s.track.kind === "video");
-        if (sender) sender.replaceTrack(screenTrack);
-
-        if (localVideoRef.current) localVideoRef.current.srcObject = screenStream;
-
-        screenTrack.onended = () => stopScreenShare();
-        setScreenSharing(true);
-      } catch (err) {
-        console.error("Screen sharing failed:", err);
-      }
-    } else {
-      stopScreenShare();
-    }
-  };
-
-  const stopScreenShare = () => {
-    if (!peer || !webcamStream) return;
-
-    const videoTrack = webcamStream.getVideoTracks()[0];
-    const sender = peer.getSenders().find((s) => s.track.kind === "video");
-    if (sender) sender.replaceTrack(videoTrack);
-
-    if (localVideoRef.current) localVideoRef.current.srcObject = webcamStream;
-    setScreenSharing(false);
-  };
-
-  const handleNewUserJoined = useCallback(({ emailid }) => {
-    setRemoteUsers((prev) => {
-      const updated = [...new Set([...prev, emailid])];
-      localStorage.setItem("remoteUsers", JSON.stringify(updated));
-      return updated;
-    });
-  }, []);
-
+  // ✅ glare-safe incoming offer handler
   const handleIncomingCall = useCallback(
     async ({ from, offer }) => {
-      const answer = await createAnswer(offer);
-      socket.emit("Call-accepted", { emailid: from, answer });
-      setRemoteUsers((prev) => {
-        const updated = [...new Set([...prev, from])];
-        localStorage.setItem("remoteUsers", JSON.stringify(updated));
-        return updated;
-      });
-      if (streamed) sendStream(streamed);
+      try {
+        if (peer.signalingState !== "stable") {
+          console.warn("Glare detected, rolling back...");
+          await peer.setLocalDescription({ type: "rollback" });
+        }
+
+        await setRemoteDescription(offer);
+        const answer = await createAnswer(offer);
+
+        socket.emit("Call-accepted", { emailid: from, answer });
+
+        setRemoteUsers((prev) => {
+          const updated = [...new Set([...prev, from])];
+          localStorage.setItem("remoteUsers", JSON.stringify(updated));
+          return updated;
+        });
+
+        if (streamed) sendStream(streamed);
+      } catch (err) {
+        console.error("Error handling incoming call:", err);
+      }
     },
-    [createAnswer, socket, streamed, sendStream]
+    [createAnswer, socket, streamed, sendStream, peer, setRemoteDescription]
   );
 
+  // ✅ glare-safe answer handler
   const handleCallAccepted = useCallback(
     async ({ answer }) => {
-      await setRemoteDescription(answer);
-      if (streamed) sendStream(streamed);
+      try {
+        if (peer.signalingState === "have-local-offer") {
+          await setRemoteDescription(answer);
+          if (streamed) sendStream(streamed);
+        } else {
+          console.warn("Skipping answer, state=", peer.signalingState);
+        }
+      } catch (err) {
+        console.error("Error handling call accepted:", err);
+      }
     },
-    [setRemoteDescription, streamed, sendStream]
+    [setRemoteDescription, streamed, sendStream, peer]
   );
 
+  // ✅ setup streams
   useEffect(() => {
-    peer.addEventListener("icecandidate", (event) => {
-      if (event.candidate) {
-        remoteUsers.forEach((remoteEmail) => {
-          socket.emit("ice-candidate", { to: remoteEmail, candidate: event.candidate });
-        });
-      }
-    });
-
-    socket.on("ice-candidate", async ({ candidate }) => {
+    const getUserMediaStream = async () => {
       try {
-        await addIceCandidate(candidate);
-      } catch (err) {
-        console.error("Failed to add ICE candidate:", err);
+        const constraints = { video: true, audio: true };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+        setStreamed(stream);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error("Error accessing media devices:", error);
       }
-    });
+    };
+
+    getUserMediaStream();
+
+    socket.on("incoming-call", handleIncomingCall);
+    socket.on("call-accepted", handleCallAccepted);
 
     return () => {
-      socket.off("ice-candidate");
+      socket.off("incoming-call", handleIncomingCall);
+      socket.off("call-accepted", handleCallAccepted);
     };
-  }, [peer, remoteUsers, socket, addIceCandidate]);
+  }, [socket, handleIncomingCall, handleCallAccepted]);
 
+  // ✅ auto-call remote users after refresh, but only if stable
+  useEffect(() => {
+    if (remoteUsers.length > 0 && streamed) {
+      (async () => {
+        if (peer.signalingState === "stable") {
+          try {
+            const offer = await createOffer();
+            await peer.setLocalDescription(offer);
+            sendStream(streamed);
+
+            remoteUsers.forEach((remoteEmail) => {
+              socket.emit("call-user", { emailid: remoteEmail, offer });
+            });
+          } catch (err) {
+            console.error("Error creating offer:", err);
+          }
+        } else {
+          console.warn("Skipping offer, state=", peer.signalingState);
+        }
+      })();
+    }
+  }, [remoteUsers, streamed, createOffer, sendStream, socket, peer]);
+
+  // ✅ show remote video
   useEffect(() => {
     if (remotestream && remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = remotestream;
     }
   }, [remotestream]);
 
-  useEffect(() => {
-    socket.on("user-joined", handleNewUserJoined);
-    socket.on("incoming-call", handleIncomingCall);
-    socket.on("Call-accepted", handleCallAccepted);
-    socket.on("chat-message", ({ message, from }) => {
-      setMessages((prev) => [...prev, { self: false, message, from }]);
-    });
-
-    return () => {
-      socket.off("user-joined", handleNewUserJoined);
-      socket.off("incoming-call", handleIncomingCall);
-      socket.off("Call-accepted", handleCallAccepted);
-      socket.off("chat-message");
-    };
-  }, [socket, handleNewUserJoined, handleIncomingCall, handleCallAccepted]);
-
-  useEffect(() => {
-    getUserMedia();
-  }, []);
-
-  useEffect(() => {
-    if (remoteUsers.length > 0 && streamed) {
-      (async () => {
-        const offer = await createOffer();
-        sendStream(streamed);
-        remoteUsers.forEach((remoteEmail) => {
-          socket.emit("call-user", { emailid: remoteEmail, offer });
-        });
-      })();
+  // ✅ toggle mic
+  const handleToggleMic = () => {
+    if (streamed) {
+      streamed.getAudioTracks().forEach((track) => (track.enabled = !track.enabled));
+      setIsMicOn((prev) => !prev);
     }
-  }, [remoteUsers, streamed, createOffer, sendStream, socket]);
-
-  const toggleCamera = () => {
-    if (!streamed) return;
-    streamed.getVideoTracks().forEach((track) => (track.enabled = !cameraOn));
-    setCameraOn((prev) => !prev);
   };
 
-  const toggleMic = () => {
-    if (!streamed) return;
-    streamed.getAudioTracks().forEach((track) => (track.enabled = !micOn));
-    setMicOn((prev) => !prev);
+  // ✅ toggle camera
+  const handleToggleCamera = () => {
+    if (streamed) {
+      streamed.getVideoTracks().forEach((track) => (track.enabled = !track.enabled));
+      setIsCameraOn((prev) => !prev);
+    }
   };
 
-  const handleEndCall = () => {
-    if (streamed) streamed.getTracks().forEach((track) => track.stop());
-    if (localVideoRef.current) localVideoRef.current.srcObject = null;
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-    localStorage.removeItem("remoteUsers");
-    localStorage.removeItem("email");
-    window.location.href = "/";
-    setRemoteUsers([]);
-    setMessages([]);
-  };
-
-  const sendMessage = () => {
-    if (!chatInput.trim()) return;
-    socket.emit("chat-message", { message: chatInput, from: userId });
-    setMessages((prev) => [...prev, { self: true, message: chatInput, from: userId }]);
-    setChatInput("");
-  };
-
-  const toggleChat = () => setChatVisible((prev) => !prev);
-
-  const handleMouseDown = (e) => {
-    isDragging.current = true;
-    offset.current = {
-      x: e.clientX - dragPos.left,
-      y: e.clientY - dragPos.top,
-    };
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDragging.current) return;
-    const newLeft = e.clientX - offset.current.x;
-    const newTop = e.clientY - offset.current.y;
-    setDragPos({
-      left: Math.max(0, Math.min(newLeft, window.innerWidth - dragRef.current.offsetWidth)),
-      top: Math.max(0, Math.min(newTop, window.innerHeight - dragRef.current.offsetHeight)),
-    });
-  };
-
-  const handleMouseUp = () => {
-    isDragging.current = false;
-  };
-
-  const handleTouchStart = (e) => {
-    isDragging.current = true;
-    const touch = e.touches[0];
-    offset.current = {
-      x: touch.clientX - dragPos.left,
-      y: touch.clientY - dragPos.top,
-    };
-  };
-
-  const handleTouchMove = (e) => {
-    if (!isDragging.current) return;
-    const touch = e.touches[0];
-    const newLeft = touch.clientX - offset.current.x;
-    const newTop = touch.clientY - offset.current.y;
-    setDragPos({
-      left: Math.max(0, Math.min(newLeft, window.innerWidth - dragRef.current.offsetWidth)),
-      top: Math.max(0, Math.min(newTop, window.innerHeight - dragRef.current.offsetHeight)),
-    });
-  };
-
-  const handleTouchEnd = () => {
-    isDragging.current = false;
-  };
-
-  useEffect(() => {
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    window.addEventListener("touchmove", handleTouchMove);
-    window.addEventListener("touchend", handleTouchEnd);
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-      window.removeEventListener("touchmove", handleTouchMove);
-      window.removeEventListener("touchend", handleTouchEnd);
-    };
-  }, []);
-
-  const handleSwapVideos = () => {
-    if (!localVideoRef.current || !remoteVideoRef.current) return;
-    const tempStream = localVideoRef.current.srcObject;
-    localVideoRef.current.srcObject = remoteVideoRef.current.srcObject;
-    remoteVideoRef.current.srcObject = tempStream;
-    setIsLocalBig((prev) => !prev);
-  };
-
-useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && webcamStream && localVideoRef.current) {
-        localVideoRef.current.srcObject = webcamStream;
+  // ✅ screen share
+  const handleShareScreen = async () => {
+    if (!isSharing) {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenTrack = screenStream.getVideoTracks()[0];
+        const sender = peer.getSenders().find((s) => s.track.kind === "video");
+        if (sender) sender.replaceTrack(screenTrack);
+        setIsSharing(true);
+        screenTrack.onended = () => handleStopShareScreen();
+      } catch (err) {
+        console.error("Error sharing screen:", err);
       }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [webcamStream]);
+    } else {
+      handleStopShareScreen();
+    }
+  };
 
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      e.preventDefault();
-        localStorage.removeItem("email");
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, []);
+  const handleStopShareScreen = () => {
+    if (streamed) {
+      const videoTrack = streamed.getVideoTracks()[0];
+      const sender = peer.getSenders().find((s) => s.track.kind === "video");
+      if (sender) sender.replaceTrack(videoTrack);
+    }
+    setIsSharing(false);
+  };
 
+  // ✅ recording
+  const handleStartRecording = () => {
+    if (streamed) {
+      const mediaRecorder = new MediaRecorder(streamed);
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) setRecordedChunks((prev) => [...prev, e.data]);
+      };
+      mediaRecorder.start();
+      setRecorder(mediaRecorder);
+      setIsRecording(true);
+    }
+  };
 
-  const startRecording = () => {
-    if (!remotestream) return alert("No User");
-    alert("Recording Has Been started")
-    const recorder = new MediaRecorder(webcamStream);
-    setMediaRecorder(recorder);
-    setRecordedChunks([]);
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) setRecordedChunks((prev) => [...prev, e.data]);
-    };
-    recorder.onstop = () => {
+  const handleStopRecording = () => {
+    if (recorder) {
+      recorder.stop();
+      setIsRecording(false);
       const blob = new Blob(recordedChunks, { type: "video/webm" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "recorded_video.webm";
+      a.download = "recording.webm";
       a.click();
-    };
-    recorder.start();
-    setIsRecording(true);
-  };
-  const stopRecording = () => {
-    if (mediaRecorder) {
-      mediaRecorder.stop();
-      setIsRecording(false);
+      setRecordedChunks([]);
     }
   };
 
+  // ✅ end call
+  const handleEndCall = () => {
+    if (connectionRef.current) connectionRef.current.close();
+    if (streamed) streamed.getTracks().forEach((track) => track.stop());
+    setStreamed(null);
+    localStorage.removeItem("remoteUsers");
+    window.location.href = "/";
+  };
+
+  const handleToggleChat = () => setIsChatOpen((prev) => !prev);
+  const handleToggleTheme = () => setIsDarkMode((prev) => !prev);
+  const handleVideoClick = () => setIsMyVideoLarge((prev) => !prev);
 
   return (
     <div
-      style={{ height: "100dvh" }}
-      className={`${theme === "dark" ? "bg-black" : "bg-white  "} flex flex-col relative overflow-hidden`}
+      className={`relative h-screen w-screen flex flex-col items-center justify-center transition-colors duration-500 ${
+        isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"
+      }`}
     >
       <button
-        onClick={toggleTheme}
-        className={`absolute top-3 right-3 z-50 p-2 rounded-full ${theme==="dark" ? "bg-white": "bg-black"}`}
+        onClick={handleToggleTheme}
+        className="absolute top-4 right-4 p-2 rounded-full shadow-lg hover:scale-110 transition-transform"
       >
-        {theme === "dark" ? <Sun size={20} color="black" /> : <Moon size={20} color="black" />}
+        {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
       </button>
 
-      <div className="absolute top-3 left-0 right-0 text-center z-20">
-        <div className={`sm:text-3xl text-[20px] font-bold ${theme=== "dark" ? "text-white" : "text-black"}`}>Room</div>
-        <h2 className={`text-[15px] opacity-100 ${theme=== "dark" ? "text-white" : "text-black"}`}>
-          {remoteUsers.length > 0 ? `Connected to: ${remoteUsers.join(", ")}` : "Waiting for users..."}
-        </h2>
-      </div>
-
-      <div className="flex-1 relative">
-        {isLocalBig ? (
-          <video ref={localVideoRef} autoPlay muted playsInline className="absolute inset-0 w-full h-screen object-cover -scale-x-100" />
-        ) : (
-          <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-screen object-cover -scale-x-100" />
-        )}
-
+      {/* Video Area */}
+      <div className="flex w-full h-full justify-center items-center gap-2">
         <div
-          ref={dragRef}
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleTouchStart}
-          onClick={handleSwapVideos}
-          className="absolute w-[100px] h-[120px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg border-2 border-white cursor-pointer overflow-hidden z-30"
-          style={{ top: dragPos.top, left: dragPos.left }}
+          className="relative cursor-pointer"
+          onClick={handleVideoClick}
         >
-          {isLocalBig ? (
-            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover -scale-x-100" />
-          ) : (
-            <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover -scale-x-100" />
-          )}
-        </div>
-      </div>
-
-      <div className="grid place-items-center">
-        <div
-          className={`md:p-3 flex gap-1 md:border-2 rounded-3xl md:gap-6 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center z-30
-            ${theme === "dark" ? "md:bg-slate-950/50 md:border-amber-50" : " md:bg-white/20 lg:border-pink-100 "}`}
-        >
-          <button onClick={toggleCamera} className={`px-3 py-1 rounded-lg hover:bg-gray-600 ${theme === "dark" ? "text-black" : "text-black"}`}>
-            {cameraOn ? <PiVideoCameraDuotone size={20} /> : <PiVideoCameraSlashDuotone size={20} />}
-          </button>
-          <button onClick={toggleMic} className={`px-3 py-1 rounded-lg hover:bg-gray-600 ${theme === "dark" ? "text-black" : "text-black"}`}>
-            {micOn ? <VscUnmute size={20} /> : <IoVolumeMute size={20} />}
-          </button>
-          <button onClick={isRecording ? stopRecording : startRecording} className={`px-3 py-1 rounded-lg hover:bg-gray-600 ${theme === "dark" ? "text-black" : "text-black"}`}>
-              {isRecording ? <BsRecordBtn size={20} color="red"/> : <BsRecordBtn  size={20} />}
-            </button>
-
-          <button onClick={handleScreenShare} className={`px-3 py-1 rounded-lg hover:bg-gray-600 ${theme === "dark" ? "text-black" : "text-black"}`}>
-            {screenSharing ? <MdOutlineStopScreenShare size={20} /> : <MdScreenShare size={20} />}
-          </button>
-          <button onClick={handleEndCall} className={`px-3 py-1 rounded-lg hover:bg-gray-600 ${theme === "dark" ? "text-black" : "text-black"}`}>
-            <MdCallEnd size={20} color="red" />
-          </button>
-        </div>
-      </div>
-
-      <button
-        onClick={toggleChat}
-        className="absolute left-2 sm:right sm:top-1/2 sm:w-[8vh]  top-1/20 transform -translate-y-1/2 z-50 bg-green-600  px-3 py-2 rounded-l-full shadow-lg"
-      >< IoChatbubbleSharp  size={20} color="black"/> </button>
-      <div
-        className={`absolute right-0 bottom-0 w-full sm:w-[50vh] h-1/2 z-50 ${
-          theme === "dark" ? "bg-black/80 text-white" : "bg-gray-100/90 text-black"
-        } backdrop-blur-md flex flex-col p-2 gap-2 overflow-hidden rounded-tl-xl z-40 transition-transform duration-300 ${
-          chatVisible ? "translate-x-1" : "translate-x-full"
-        }`}
-      >
-        <div className="flex-1 overflow-y-auto space-y-1">
-          {messages.map((msg, index) => (
-            <div
-              key={index}
-              className={`p-2 rounded-md ${msg.self ? "bg-blue-500 self-end text-white text-[16px]" :  " text-[16px]bg-gray-700 text-white self-start"}`}
-            >
-              {!msg.self && <div className="text-xs opacity-70 mb-1">{msg.from}</div>}
-              {msg.message}
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-1 mt-2">
-          <input
-            type="text"
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            placeholder="Type a message..."
-            className={`flex-1 p-2 rounded-md ${theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-black border"}`}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          <video
+            ref={isMyVideoLarge ? videoRef : remoteVideoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-[80vw] h-[70vh] rounded-xl shadow-lg object-cover"
           />
-          <button onClick={sendMessage} className={`px-3 py-2 bg-green-600 rounded-md ${theme === "dark" ? "text-black bg-white" :""}`}>
-            Send
-          </button>
+        </div>
+        <div
+          className="relative cursor-pointer"
+          onClick={handleVideoClick}
+        >
+          <video
+            ref={isMyVideoLarge ? remoteVideoRef : videoRef}
+            autoPlay
+            playsInline
+            className="w-[20vw] h-[20vh] rounded-xl shadow-lg object-cover"
+          />
         </div>
       </div>
+
+      {/* Controls */}
+      <div className="absolute bottom-6 flex space-x-6 bg-opacity-40 px-6 py-3 rounded-full shadow-md">
+        <button onClick={handleToggleMic} className="p-3 rounded-full shadow-lg bg-white hover:scale-110 transition">
+          <FaMicrophone className={isMicOn ? "text-green-500" : "text-red-500"} />
+        </button>
+        <button onClick={handleToggleCamera} className="p-3 rounded-full shadow-lg bg-white hover:scale-110 transition">
+          <FaVideo className={isCameraOn ? "text-green-500" : "text-red-500"} />
+        </button>
+        <button onClick={handleShareScreen} className="p-3 rounded-full shadow-lg bg-white hover:scale-110 transition">
+          <FaDesktop className={isSharing ? "text-green-500" : "text-black"} />
+        </button>
+        <button
+          onClick={isRecording ? handleStopRecording : handleStartRecording}
+          className="p-3 rounded-full shadow-lg bg-white hover:scale-110 transition"
+        >
+          <BsFillRecordCircleFill className={isRecording ? "text-red-500" : "text-black"} />
+        </button>
+        <button onClick={handleEndCall} className="p-3 rounded-full shadow-lg bg-red-500 hover:scale-110 transition">
+          <MdOutlineCallEnd className="text-white" />
+        </button>
+        <button onClick={handleToggleChat} className="p-3 rounded-full shadow-lg bg-white hover:scale-110 transition">
+          <LuMessageSquare className="text-black" />
+        </button>
+      </div>
+
+      {/* Chat Box */}
+      {isChatOpen && (
+        <Draggable>
+          <div className="absolute top-20 right-6 w-80 h-96 bg-white shadow-xl rounded-lg overflow-hidden">
+            <ChatBox socket={socket} email={email} />
+          </div>
+        </Draggable>
+      )}
     </div>
   );
 }

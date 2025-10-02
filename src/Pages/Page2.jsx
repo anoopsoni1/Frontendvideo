@@ -191,7 +191,6 @@ function Page2() {
     }
   }, [remoteUsers, streamed, createOffer, sendStream, socket]);
 
- useEffect(()=>{
 const handleCallButton = async () => {
     const offer = await createOffer();
     sendStream(streamed);
@@ -199,8 +198,10 @@ const handleCallButton = async () => {
       socket.emit("call-user", { emailid: remoteEmail, offer });
     });
   };
-  handleCallButton()
+  useEffect(()=>{
+handleCallButton()
   })
+  
   const toggleCamera = () => {
     if (!streamed) return;
     streamed.getVideoTracks().forEach((track) => (track.enabled = !cameraOn));

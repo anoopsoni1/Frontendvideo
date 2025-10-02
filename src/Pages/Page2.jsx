@@ -2,14 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Usesocket } from "../Provider/Socket";
 import { Usepeer } from "../Provider/Peer";
 import { Sun, Moon } from "lucide-react"; 
-import { PiVideoCameraDuotone } from "react-icons/pi";
-import { PiVideoCameraSlashDuotone } from "react-icons/pi";
-import { MdCastConnected } from "react-icons/md";
+import { PiVideoCameraDuotone, PiVideoCameraSlashDuotone } from "react-icons/pi";
+import { MdCastConnected, MdScreenShare, MdOutlineStopScreenShare, MdCallEnd } from "react-icons/md";
 import { IoVolumeMute } from "react-icons/io5";
 import { VscUnmute } from "react-icons/vsc";
-import { MdScreenShare } from "react-icons/md";
-import { MdOutlineStopScreenShare } from "react-icons/md";
-import { MdCallEnd } from "react-icons/md";
+
 function Page2() {
   const socket = Usesocket();
   const {
@@ -166,6 +163,35 @@ function Page2() {
     getUserMedia();
   }, []);
 
+  // ✅ NEW: Save call state before refresh
+  useEffect(() => {
+    const saveState = () => {
+      if (remoteUsers.length > 0) {
+        localStorage.setItem("inCall", "true");
+        localStorage.setItem("roomUsers", JSON.stringify(remoteUsers));
+      }
+    };
+    window.addEventListener("beforeunload", saveState);
+    return () => window.removeEventListener("beforeunload", saveState);
+  }, [remoteUsers]);
+
+  // ✅ NEW: Restore call after refresh
+  useEffect(() => {
+    const inCall = localStorage.getItem("inCall");
+    const savedUsers = JSON.parse(localStorage.getItem("roomUsers") || "[]");
+
+    if (inCall && savedUsers.length > 0 && streamed) {
+      setRemoteUsers(savedUsers);
+      (async () => {
+        const offer = await createOffer();
+        sendStream(streamed);
+        savedUsers.forEach((remoteEmail) => {
+          socket.emit("call-user", { emailid: remoteEmail, offer });
+        });
+      })();
+    }
+  }, [createOffer, sendStream, socket, streamed]);
+
   const handleCallButton = async () => {
     if (!remoteUsers.length || !streamed) return alert("No remote users or local stream available");
     const offer = await createOffer();
@@ -191,9 +217,14 @@ function Page2() {
     if (streamed) streamed.getTracks().forEach((track) => track.stop());
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideosContainerRef.current) remoteVideosContainerRef.current.innerHTML = "";
-    window.location.href = "/";
+
+    // ✅ NEW: Clear session only on end call
+    localStorage.removeItem("inCall");
+    localStorage.removeItem("roomUsers");
+
     setRemoteUsers([]);
     setMessages([]);
+    window.location.href = "/";
   };
 
   const sendMessage = () => {
@@ -210,7 +241,7 @@ function Page2() {
       style={{ height: "100dvh" }}
       className={`${theme === "dark" ? "bg-black text-white" : "bg-white text-black"} flex flex-col relative overflow-hidden`}
     >
-     
+      {/* Theme toggle */}
       <button
         onClick={toggleTheme}
         className="absolute top-3 right-3 z-50 p-2 rounded-full bg-gray-700/70 hover:bg-gray-500 text-white"
@@ -218,14 +249,15 @@ function Page2() {
         {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
       </button>
 
-      
+      {/* Room info */}
       <div className="absolute top-3 left-0 right-0 text-center z-20">
-        <div className="sm:text-3xl text-[20px] font-bold">{theme === "dark" ? "Room" : "Room"}</div>
+        <div className="sm:text-3xl text-[20px] font-bold">Room</div>
         <h2 className="text-sm opacity-70">
           {remoteUsers.length > 0 ? `Connected to: ${remoteUsers.join(", ")}` : "Waiting for users..."}
         </h2>
       </div>
 
+      {/* Video Area */}
       <div className="flex-1 relative">
         <div ref={remoteVideosContainerRef} className="absolute inset-0 w-full h-full"></div>
         <video
@@ -237,14 +269,14 @@ function Page2() {
         />
       </div>
 
-      {/* Controls */}
+      {/* Control buttons */}
       <div className="grid place-items-center">
         <div
           className={`md:p-3 flex gap-1 md:border-2 rounded-3xl md:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center 
           ${theme === "dark" ? "md:bg-slate-950/50 md:border-amber-50 text-white" : " text-white md:bg-gray-200 md:border-gray-400"}`}
         >
           <button onClick={handleCallButton} className="px-3 py-1 rounded-lg hover:bg-gray-600">
-          <MdCastConnected size={20}/>
+            <MdCastConnected size={20}/>
           </button>
           <button onClick={toggleCamera} className="px-3 py-1 rounded-lg hover:bg-gray-600">
             {cameraOn ? <PiVideoCameraDuotone size={20} />: <PiVideoCameraSlashDuotone size={20} />}
@@ -253,7 +285,7 @@ function Page2() {
             {micOn ? <VscUnmute size={20} /> : <IoVolumeMute size={20}/>}
           </button>
           <button onClick={handleScreenShare} className="px-3 py-1 rounded-lg hover:bg-gray-600">
-            {screenSharing ? <MdOutlineStopScreenShare  size={20}/>: <MdScreenShare  size={20}/>}
+            {screenSharing ? <MdOutlineStopScreenShare size={20}/>: <MdScreenShare size={20}/>}
           </button>
           <button onClick={handleEndCall} className="px-3 py-1 rounded-lg hover:bg-gray-600">
             <MdCallEnd size={20} color="red" />
@@ -261,15 +293,13 @@ function Page2() {
         </div>
       </div>
 
-     
+      {/* Chat toggle button */}
       <button
         onClick={toggleChat}
         className="absolute right-2 top-1/2 transform -translate-y-1/2 z-50 bg-green-600 text-white px-3 py-2 rounded-l-full shadow-lg"
-      >
-        {/* {chatVisible ? "Close Chat" : "Open Chat"} */}
-      </button>
+      ></button>
 
-      
+      {/* Chat Box */}
       <div
         className={`absolute right-0 bottom-0 w-full sm:w-[50vh] h-1/2 ${
           theme === "dark" ? "bg-black/80" : "bg-gray-100/90 text-black"

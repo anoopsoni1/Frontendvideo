@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Usesocket } from "../Provider/Socket";
 import { Usepeer } from "../Provider/Peer";
-import { Sun, Moon } from "lucide-react"; 
+import { Sun, Moon } from "lucide-react";
 import { PiVideoCameraDuotone, PiVideoCameraSlashDuotone } from "react-icons/pi";
 import { MdCastConnected, MdScreenShare, MdOutlineStopScreenShare, MdCallEnd } from "react-icons/md";
 import { IoVolumeMute } from "react-icons/io5";
@@ -9,19 +9,10 @@ import { VscUnmute } from "react-icons/vsc";
 
 function Page2() {
   const socket = Usesocket();
-  const {
-    peer,
-    createOffer,
-    createAnswer,
-    setRemoteDescription,
-    sendStream,
-    remotestream,
-    addIceCandidate,
-  } = Usepeer();
+  const { peer, createOffer, createAnswer, setRemoteDescription, sendStream, remotestream, addIceCandidate } = Usepeer();
 
   const [streamed, setStreamed] = useState(null);
   const [remoteUsers, setRemoteUsers] = useState(() => {
-    // Restore previous users if refresh happens
     const saved = localStorage.getItem("remoteUsers");
     return saved ? JSON.parse(saved) : [];
   });
@@ -29,16 +20,16 @@ function Page2() {
   const [micOn, setMicOn] = useState(true);
   const [screenSharing, setScreenSharing] = useState(false);
   const [webcamStream, setWebcamStream] = useState(null);
-
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
   const [chatVisible, setChatVisible] = useState(false);
+  const [theme, setTheme] = useState("dark");
 
-  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
+  // Toggle which video is big
+  const [isLocalBig, setIsLocalBig] = useState(true);
 
   const localVideoRef = useRef(null);
-  const remoteVideosContainerRef = useRef(null);
-
+  const remoteVideoRef = useRef(null);
   const userId = localStorage.getItem("email");
 
   const toggleTheme = () => {
@@ -47,20 +38,11 @@ function Page2() {
     localStorage.setItem("theme", newTheme);
   };
 
-  // ✅ Enhance video quality + audio quality
   const getUserMedia = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 30 },
-        },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
+        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
       setStreamed(stream);
       setWebcamStream(stream);
@@ -137,7 +119,6 @@ function Page2() {
     [setRemoteDescription, streamed, sendStream]
   );
 
-  // ✅ Persist ICE + reconnect
   useEffect(() => {
     peer.addEventListener("icecandidate", (event) => {
       if (event.candidate) {
@@ -146,6 +127,7 @@ function Page2() {
         });
       }
     });
+
     socket.on("ice-candidate", async ({ candidate }) => {
       try {
         await addIceCandidate(candidate);
@@ -153,19 +135,15 @@ function Page2() {
         console.error("Failed to add ICE candidate:", err);
       }
     });
+
     return () => {
       socket.off("ice-candidate");
     };
   }, [peer, remoteUsers, socket, addIceCandidate]);
 
   useEffect(() => {
-    if (remotestream) {
-      const videoElement = document.createElement("video");
-      videoElement.srcObject = remotestream;
-      videoElement.autoplay = true;
-      videoElement.playsInline = true;
-      videoElement.className = "absolute inset-0 w-full h-full object-cover bg-black -scale-x-100";
-      remoteVideosContainerRef.current.appendChild(videoElement);
+    if (remotestream && remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remotestream;
     }
   }, [remotestream]);
 
@@ -176,6 +154,7 @@ function Page2() {
     socket.on("chat-message", ({ message, from }) => {
       setMessages((prev) => [...prev, { self: false, message, from }]);
     });
+
     return () => {
       socket.off("user-joined", handleNewUserJoined);
       socket.off("incoming-call", handleIncomingCall);
@@ -188,7 +167,6 @@ function Page2() {
     getUserMedia();
   }, []);
 
-  // ✅ Auto-reconnect after refresh if remote users exist
   useEffect(() => {
     if (remoteUsers.length > 0 && streamed) {
       (async () => {
@@ -225,11 +203,8 @@ function Page2() {
   const handleEndCall = () => {
     if (streamed) streamed.getTracks().forEach((track) => track.stop());
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
-    if (remoteVideosContainerRef.current) remoteVideosContainerRef.current.innerHTML = "";
-
-    // Clear saved state so refresh won't reconnect
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
     localStorage.removeItem("remoteUsers");
-
     window.location.href = "/";
     setRemoteUsers([]);
     setMessages([]);
@@ -265,35 +240,65 @@ function Page2() {
         </h2>
       </div>
 
-      {/* Video section */}
+      {/* Video layout */}
       <div className="flex-1 relative">
-        <div ref={remoteVideosContainerRef} className="absolute inset-0 w-full h-full"></div>
-        <video
-          ref={localVideoRef}
-          autoPlay
-          muted
-          playsInline
-          className="absolute bottom-4 left-4 w-[100px] -scale-x-100 h-[150px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg object-cover border-2 border-white z-30"
-        />
+        {isLocalBig ? (
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-screen object-cover -scale-x-100"
+          />
+        ) : (
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            className="absolute inset-0 w-full h-screen object-cover -scale-x-100"
+          />
+        )}
+
+        <div
+          className="absolute bottom-4 left-4 w-[100px] h-[150px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg border-2 border-white z-30 cursor-pointer overflow-hidden"
+          onClick={() => setIsLocalBig(!isLocalBig)}
+        >
+          {isLocalBig ? (
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className="w-full h-full object-cover -scale-x-100"
+            />
+          ) : (
+            <video
+              ref={localVideoRef}
+              autoPlay
+              muted
+              playsInline
+              className="w-full h-full object-cover -scale-x-100"
+            />
+          )}
+        </div>
       </div>
 
       {/* Controls */}
       <div className="grid place-items-center">
         <div
-          className={`md:p-3 flex gap-1 md:border-2 rounded-3xl md:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center 
-          ${theme === "dark" ? "md:bg-slate-950/50 md:border-amber-50 text-white" : " text-white md:bg-gray-200 md:border-gray-400"}`}
+          className={`md:p-3 flex gap-1 md:border-2 rounded-3xl md:gap-6 z-20 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center
+            ${theme === "dark" ? "md:bg-slate-950/50 md:border-amber-50 text-white" : " text-white md:bg-gray-200 md:border-gray-400"}`}
         >
           <button onClick={handleCallButton} className="px-3 py-1 rounded-lg hover:bg-gray-600">
-            <MdCastConnected size={20}/>
+            <MdCastConnected size={20} />
           </button>
           <button onClick={toggleCamera} className="px-3 py-1 rounded-lg hover:bg-gray-600">
-            {cameraOn ? <PiVideoCameraDuotone size={20} />: <PiVideoCameraSlashDuotone size={20} />}
+            {cameraOn ? <PiVideoCameraDuotone size={20} /> : <PiVideoCameraSlashDuotone size={20} />}
           </button>
           <button onClick={toggleMic} className="px-3 py-1 rounded-lg hover:bg-gray-600">
-            {micOn ? <VscUnmute size={20} /> : <IoVolumeMute size={20}/>}
+            {micOn ? <VscUnmute size={20} /> : <IoVolumeMute size={20} />}
           </button>
           <button onClick={handleScreenShare} className="px-3 py-1 rounded-lg hover:bg-gray-600">
-            {screenSharing ? <MdOutlineStopScreenShare  size={20}/>: <MdScreenShare  size={20}/>}
+            {screenSharing ? <MdOutlineStopScreenShare size={20} /> : <MdScreenShare size={20} />}
           </button>
           <button onClick={handleEndCall} className="px-3 py-1 rounded-lg hover:bg-gray-600">
             <MdCallEnd size={20} color="red" />
@@ -305,9 +310,7 @@ function Page2() {
       <button
         onClick={toggleChat}
         className="absolute right-2 top-1/2 transform -translate-y-1/2 z-50 bg-green-600 text-white px-3 py-2 rounded-l-full shadow-lg"
-      >
-      </button>
-
+      />
       <div
         className={`absolute right-0 bottom-0 w-full sm:w-[50vh] h-1/2 ${
           theme === "dark" ? "bg-black/80" : "bg-gray-100/90 text-black"
@@ -332,9 +335,7 @@ function Page2() {
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             placeholder="Type a message..."
-            className={`flex-1 p-2 rounded-md ${
-              theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-black border"
-            }`}
+            className={`flex-1 p-2 rounded-md ${theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-black border"}`}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           />
           <button onClick={sendMessage} className="px-3 py-2 bg-green-600 rounded-md text-white">

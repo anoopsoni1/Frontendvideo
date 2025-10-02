@@ -198,9 +198,7 @@ const handleCallButton = async () => {
       socket.emit("call-user", { emailid: remoteEmail, offer });
     });
   };
-  useEffect(()=>{
-handleCallButton()
-  })
+
   
   const toggleCamera = () => {
     if (!streamed) return;
@@ -398,6 +396,9 @@ useEffect(() => {
           className={`md:p-3 flex gap-1 md:border-2 rounded-3xl md:gap-6 sm:h-[9vh] md:h-[9vh] mb-2 h-[6vh] sm:text-[15px] text-[12px] place-items-center z-30
             ${theme === "dark" ? "md:bg-slate-950/50 md:border-amber-50" : " md:bg-white/20 lg:border-pink-100 "}`}
         >
+           <button onClick={handleCallButton} className="px-3 py-1 rounded-lg hover:bg-gray-600">
+            <MdCastConnected size={20} />
+          </button>
           <button onClick={toggleCamera} className={`px-3 py-1 rounded-lg hover:bg-gray-600 ${theme === "dark" ? "text-black" : "text-black"}`}>
             {cameraOn ? <PiVideoCameraDuotone size={20} /> : <PiVideoCameraSlashDuotone size={20} />}
           </button>

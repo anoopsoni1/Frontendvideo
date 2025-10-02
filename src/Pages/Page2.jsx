@@ -24,11 +24,10 @@ function Page2() {
   const [remoteUsers, setRemoteUsers] = useState(
     JSON.parse(localStorage.getItem("remoteUsers")) || []
   );
-  const [email, setEmail] = useState(localStorage.getItem("email"));
-
   const videoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const connectionRef = useRef(null);
+  const email = localStorage.getItem("email")
 
   const [isMicOn, setIsMicOn] = useState(true);
   const [isCameraOn, setIsCameraOn] = useState(true);
@@ -290,7 +289,6 @@ function Page2() {
         </button>
       </div>
 
-      {/* Chat Box */}
       {isChatOpen && (
         <Draggable>
           <div className="absolute top-20 right-6 w-80 h-96 bg-white shadow-xl rounded-lg overflow-hidden">

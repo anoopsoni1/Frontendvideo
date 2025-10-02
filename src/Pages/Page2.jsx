@@ -25,12 +25,17 @@ function Page2() {
   const [chatVisible, setChatVisible] = useState(false);
   const [theme, setTheme] = useState("dark");
 
-  // Toggle which video is big
   const [isLocalBig, setIsLocalBig] = useState(true);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const userId = localStorage.getItem("email");
+
+  // Draggable small video position
+  const [dragPos, setDragPos] = useState({ top: 16, left: 16 });
+  const dragRef = useRef(null);
+  const offset = useRef({ x: 0, y: 0 });
+  const isDragging = useRef(false);
 
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
@@ -219,6 +224,47 @@ function Page2() {
 
   const toggleChat = () => setChatVisible((prev) => !prev);
 
+  // Drag handlers
+  const handleMouseDown = (e) => {
+    isDragging.current = true;
+    offset.current = {
+      x: e.clientX - dragPos.left,
+      y: e.clientY - dragPos.top,
+    };
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging.current) return;
+    setDragPos({
+      left: e.clientX - offset.current.x,
+      top: e.clientY - offset.current.y,
+    });
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+  };
+
+  useEffect(() => {
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
+  // Swap local and remote streams
+  const handleSwapVideos = () => {
+    if (!localVideoRef.current || !remoteVideoRef.current) return;
+
+    const tempStream = localVideoRef.current.srcObject;
+    localVideoRef.current.srcObject = remoteVideoRef.current.srcObject;
+    remoteVideoRef.current.srcObject = tempStream;
+
+    setIsLocalBig((prev) => !prev);
+  };
+
   return (
     <div
       style={{ height: "100dvh" }}
@@ -243,41 +289,23 @@ function Page2() {
       {/* Video layout */}
       <div className="flex-1 relative">
         {isLocalBig ? (
-          <video
-            ref={localVideoRef}
-            autoPlay
-            muted
-            playsInline
-            className="absolute inset-0 w-full h-screen object-cover -scale-x-100"
-          />
+          <video ref={localVideoRef} autoPlay muted playsInline className="absolute inset-0 w-full h-full object-cover -scale-x-100" />
         ) : (
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            className="absolute inset-0 w-full h-screen object-cover -scale-x-100"
-          />
+          <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover -scale-x-100" />
         )}
 
+        {/* Draggable small video */}
         <div
-          className="absolute bottom-4 left-4 w-[100px] h-[150px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg border-2 border-white z-30 cursor-pointer overflow-hidden"
-          onClick={() => setIsLocalBig(!isLocalBig)}
+          ref={dragRef}
+          onMouseDown={handleMouseDown}
+          onClick={handleSwapVideos} // <-- Fixed swap here
+          className="absolute w-[120px] h-[180px] sm:w-[180px] sm:h-[240px] rounded-xl shadow-lg border-2 border-white cursor-pointer overflow-hidden"
+          style={{ top: dragPos.top, left: dragPos.left }}
         >
           {isLocalBig ? (
-            <video
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-              className="w-full h-full object-cover -scale-x-100"
-            />
+            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover -scale-x-100" />
           ) : (
-            <video
-              ref={localVideoRef}
-              autoPlay
-              muted
-              playsInline
-              className="w-full h-full object-cover -scale-x-100"
-            />
+            <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover -scale-x-100" />
           )}
         </div>
       </div>

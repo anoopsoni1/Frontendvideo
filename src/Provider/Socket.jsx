@@ -9,7 +9,7 @@ export const Usesocket = ()=>{
 
  const  SocketProvider = (props) => {
     const socket = useMemo(() => 
-        io('http://localhost:8000' ,
+        io('https://backendvid.onrender.com' ,
            { path: '/socket.io'},
            { transports: ['websocket',"polling"] }
         ), []

@@ -40,7 +40,15 @@ function Page2() {
   const [isRecording, setIsRecording] = useState(false);
 
 
-  const [dragPos, setDragPos] = useState({ top: 480, left: 10 });
+ let initialDragPos;
+
+if (window.innerWidth < 768) {
+  initialDragPos = { top: 586, left: 10 };
+} else {
+  initialDragPos = { top: 520, left: 20 };
+}
+
+const [dragPos, setDragPos] = useState(initialDragPos);
   const dragRef = useRef(null);
   const offset = useRef({ x: 0, y: 0 });
   const isDragging = useRef(false);
@@ -263,16 +271,16 @@ const handleCallButton = async () => {
     };
   };
 
-  const handleTouchMove = (e) => {
-    if (!isDragging.current) return;
-    const touch = e.touches[0];
-    const newLeft = touch.clientX - offset.current.x;
-    const newTop = touch.clientY - offset.current.y;
-    setDragPos({
-      left: Math.max(0, Math.min(newLeft, window.innerWidth - dragRef.current.offsetWidth)),
-      top: Math.max(0, Math.min(newTop, window.innerHeight - dragRef.current.offsetHeight)),
-    });
-  };
+  // const handleTouchMove = (e) => {
+  //   if (!isDragging.current) return;
+  //   const touch = e.touches[0];
+  //   const newLeft = touch.clientX - offset.current.x;
+  //   const newTop = touch.clientY - offset.current.y;
+  //   setDragPos({
+  //     left: Math.max(0, Math.min(newLeft, window.innerWidth - dragRef.current.offsetWidth)),
+  //     top: Math.max(0, Math.min(newTop, window.innerHeight - dragRef.current.offsetHeight)),
+  //   });
+  // };
 
   const handleTouchEnd = () => {
     isDragging.current = false;
@@ -281,13 +289,13 @@ const handleCallButton = async () => {
   useEffect(() => {
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
-    window.addEventListener("touchmove", handleTouchMove);
+    // window.addEventListener("touchmove", handleTouchMove);
     window.addEventListener("touchend", handleTouchEnd);
 
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
-      window.removeEventListener("touchmove", handleTouchMove);
+      // window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
     };
   }, []);
@@ -297,7 +305,7 @@ const handleCallButton = async () => {
     const tempStream = localVideoRef.current.srcObject;
     localVideoRef.current.srcObject = remoteVideoRef.current.srcObject;
     remoteVideoRef.current.srcObject = tempStream;
-    setIsLocalBig((prev) => !prev);
+        setIsLocalBig((prev) => !prev);
   };
 
 useEffect(() => {
@@ -399,20 +407,20 @@ useEffect(() => {
            <button onClick={handleCallButton} className="px-3 py-1 rounded-lg hover:bg-gray-600">
             <MdCastConnected size={20} />
           </button>
-          <button onClick={toggleCamera} className={`px-3 py-1 rounded-lg hover:bg-gray-600 ${theme === "dark" ? "text-black" : "text-black"}`}>
+          <button onClick={toggleCamera} className={`px-3 py-1 rounded-lg hover:bg-gray-600 `}>
             {cameraOn ? <PiVideoCameraDuotone size={20} /> : <PiVideoCameraSlashDuotone size={20} />}
           </button>
-          <button onClick={toggleMic} className={`px-3 py-1 rounded-lg hover:bg-gray-600 ${theme === "dark" ? "text-black" : "text-black"}`}>
+          <button onClick={toggleMic} className={`px-3 py-1 rounded-lg hover:bg-gray-600`}>
             {micOn ? <VscUnmute size={20} /> : <IoVolumeMute size={20} />}
           </button>
-          <button onClick={isRecording ? stopRecording : startRecording} className={`px-3 py-1 rounded-lg hover:bg-gray-600 ${theme === "dark" ? "text-black" : "text-black"}`}>
+          <button onClick={isRecording ? stopRecording : startRecording} className={`px-3 py-1 rounded-lg hover:bg-gray-600 `}>
               {isRecording ? <BsRecordBtn size={20} color="red"/> : <BsRecordBtn  size={20} />}
             </button>
 
-          <button onClick={handleScreenShare} className={`px-3 py-1 rounded-lg hover:bg-gray-600 ${theme === "dark" ? "text-black" : "text-black"}`}>
+          <button onClick={handleScreenShare} className={`px-3 py-1 rounded-lg hover:bg-gray-600 `}>
             {screenSharing ? <MdOutlineStopScreenShare size={20} /> : <MdScreenShare size={20} />}
           </button>
-          <button onClick={handleEndCall} className={`px-3 py-1 rounded-lg hover:bg-gray-600 ${theme === "dark" ? "text-black" : "text-black"}`}>
+          <button onClick={handleEndCall} className={`px-3 py-1 rounded-lg hover:bg-gray-600`}>
             <MdCallEnd size={20} color="red" />
           </button>
         </div>
@@ -420,7 +428,7 @@ useEffect(() => {
 
       <button
         onClick={toggleChat}
-        className="absolute left-2 sm:right sm:top-1/2 sm:w-[8vh]  top-1/20 transform -translate-y-1/2 z-50 bg-green-600  px-3 py-2 rounded-l-full shadow-lg"
+        className="absolute sm:right-4 sm:top-1/26 top-8 left-2 sm:w-[8vh]  transform -translate-y-1/2 z-50 bg-green-600  px-3 py-2 rounded-l-full shadow-lg"
       >< IoChatbubbleSharp  size={20} color="black"/> </button>
       <div
         className={`absolute right-0 bottom-0 w-full sm:w-[50vh] h-1/2 z-50 ${

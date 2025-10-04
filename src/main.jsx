@@ -5,7 +5,7 @@ import App from './Pages/App'
 import Page2 from './Pages/Page2'
 import SocketProvider from "./Provider/Socket.jsx"
 import PeerProvider from './Provider/Peer.jsx'
-import LandingPage from './Components/Home.jsx'
+import Home from './Components/Home.jsx'
 const router = createBrowserRouter([
   {
     path: "/roompage" ,
@@ -16,9 +16,8 @@ const router = createBrowserRouter([
   }  ,
   {
     path : "/" , 
-    element : <LandingPage />
-  }
-  
+    element : <Home />
+  } 
 ])
 
 

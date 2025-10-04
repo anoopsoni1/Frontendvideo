@@ -42,16 +42,15 @@ function Home() {
     <div
       className={`${
         theme === "dark"
-          ? "bg-[url('https://images.unsplash.com/photo-1615966650071-855b15f29ad1?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c3Vuc2V0JTIwY291cGxlfGVufDB8fDB8fHww')]"
-          : "bg-[url('https://blog.zegocloud.com/wp-content/uploads/2023/05/video-call-service.jpg')]"
+          ? "bg-[url('https://img.freepik.com/free-photo/woman-with-headset-video-call_23-2148854900.jpg')]"
+          : "bg-[url('https://images.pexels.com/photos/4126695/pexels-photo-4126695.jpeg?auto=compress&cs=tinysrgb&h=627&fit=crop&w=1200')]"
       } bg-cover bg-center min-h-screen relative flex flex-col items-center justify-center`}
     >
-      {/* Theme Toggle Button */}
       <button
         onClick={toggleTheme}
         className="absolute top-4 right-4 z-50 p-2 rounded-full bg-gray-700/70 hover:bg-gray-500 text-white"
       >
-        {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+        {theme === "dark" ? <Sun size={20} color="black"/> : <Moon size={20} color="black" />}
       </button>
 
       <div className="z-50 relative flex flex-col items-center justify-center gap-6 w-full">
@@ -85,7 +84,7 @@ function Home() {
           <button
             onClick={handleJoinRoom}
             className={`font-medium py-2 rounded-lg shadow-md transition-all duration-200 
-              ${theme === "dark" ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-yellow-500 hover:bg-yellow-600 text-white"}`}
+              ${theme === "dark" ? " text-black" : " text-black"}`}
           >
             Enter Room
           </button>

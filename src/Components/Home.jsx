@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { BsCameraVideoFill, BsPlayCircle } from "react-icons/bs";
 import { Sun, Moon } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link  } from "react-router-dom";
 
-const LandingPage = () => {
+const Home = () => {
+
   const [theme, setTheme] = useState("dark");
 
   
@@ -12,7 +13,7 @@ const LandingPage = () => {
 
   return (
     <div
-      className={`min-h-screen transition-colors duration-300 ${
+      className={`min-h-screen  duration-300 ${
         theme === "dark" ? "bg-slate-950 text-slate-50" : "bg-white text-slate-900"
       }`}
     >
@@ -21,7 +22,6 @@ const LandingPage = () => {
           <BsCameraVideoFill className="text-3xl text-indigo-600" />
           <span className="text-2xl font-bold">Nexo</span>
         </div>
-
         <div className="flex items-center gap-4">
           <button
             onClick={toggleTheme}
@@ -92,11 +92,10 @@ const LandingPage = () => {
             </div>
           </div>
 
-          {/* Right Image */}
           <div className="relative mt-12 md:mt-0">
             <div className="absolute -inset-4 bg-gradient-to-tr from-indigo-500 to-cyan-400 opacity-60 rounded-xl blur-3xl -z-10"></div>
             <img
-              src="https://images.pexels.com/photos/4126743/pexels-photo-4126743.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+              src="https://mycomputerworks.com/wp-content/uploads/2024/03/shutterstock_1689338011-min-scaled.jpg"
               alt="Video call on a monitor"
               className="relative w-full rounded-xl shadow-2xl"
             />
@@ -107,4 +106,4 @@ const LandingPage = () => {
   );
 };
 
-export default LandingPage;
+export default Home;
